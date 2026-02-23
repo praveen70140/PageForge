@@ -1,0 +1,18 @@
+{
+  "admin": {
+    "listen": "0.0.0.0:2019"
+  },
+  "apps": {
+    "http": {
+      "servers": {
+        "static": {
+          "listen": [":80"],
+          "automatic_https": {
+            "disable": true
+          },
+          "routes": []
+        }
+      }
+    }
+  }
+}

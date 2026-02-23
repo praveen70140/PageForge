@@ -1,0 +1,35 @@
+{
+  "name": "@pageforge/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx server.ts",
+    "build": "next build",
+    "start": "NODE_ENV=production tsx server.ts"
+  },
+  "dependencies": {
+    "@pageforge/shared": "workspace:*",
+    "bullmq": "^5.4.0",
+    "dockerode": "^4.0.2",
+    "ioredis": "^5.3.2",
+    "minio": "^8.0.0",
+    "mongoose": "^8.2.0",
+    "next": "^14.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "ws": "^8.16.0",
+    "nanoid": "^5.0.6"
+  },
+  "devDependencies": {
+    "@types/dockerode": "^3.3.28",
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@types/ws": "^8.5.10",
+    "autoprefixer": "^10.4.18",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.7.0",
+    "typescript": "^5.4.0"
+  }
+}

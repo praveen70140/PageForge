@@ -1,0 +1,28 @@
+{
+  "name": "pageforge",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter @pageforge/web dev",
+    "dev:worker": "pnpm --filter @pageforge/worker dev",
+    "dev": "concurrently \"pnpm dev:web\" \"pnpm dev:worker\"",
+    "build:web": "pnpm --filter @pageforge/web build",
+    "build:worker": "pnpm --filter @pageforge/worker build",
+    "build:shared": "pnpm --filter @pageforge/shared build",
+    "build": "pnpm build:shared && concurrently \"pnpm build:web\" \"pnpm build:worker\"",
+    "infra:up": "docker compose --env-file .env -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose --env-file .env -f infra/docker-compose.yml --profile tunnel down",
+    "infra:logs": "docker compose --env-file .env -f infra/docker-compose.yml logs -f",
+    "infra:tunnel": "docker compose --env-file .env -f infra/docker-compose.yml --profile tunnel up -d",
+    "infra:tunnel:down": "docker compose --env-file .env -f infra/docker-compose.yml --profile tunnel down",
+    "infra:tunnel:logs": "docker compose --env-file .env -f infra/docker-compose.yml logs -f cloudflared",
+    "setup": "pnpm install && pnpm build:shared && pnpm infra:up && sleep 5 && bash infra/init-minio.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
