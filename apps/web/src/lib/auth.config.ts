@@ -40,7 +40,7 @@ export const authConfig: NextAuthConfig = {
       const { pathname } = request.nextUrl;
 
       // Public routes that don't require auth
-      const publicPaths = ['/login', '/register'];
+      const publicPaths = ['/login', '/register', '/forgot-password'];
       const isPublicPath = publicPaths.some((p) => pathname.startsWith(p));
       const isAuthApi = pathname.startsWith('/api/auth');
 

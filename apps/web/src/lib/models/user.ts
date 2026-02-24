@@ -6,6 +6,7 @@ export interface UserDocument extends Document {
   name: string;
   email: string;
   passwordHash: string;
+  emailVerified: boolean;
   // GitHub OAuth
   githubAccessToken?: string;
   githubId?: number;
@@ -26,6 +27,7 @@ const UserSchema = new Schema<UserDocument>(
       trim: true,
     },
     passwordHash: { type: String, required: true },
+    emailVerified: { type: Boolean, default: true },
     // GitHub OAuth — token is select:false so it's never returned by default
     githubAccessToken: { type: String, select: false },
     githubId: { type: Number },

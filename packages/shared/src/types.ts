@@ -4,6 +4,7 @@ export interface User {
   _id: string;
   name: string;
   email: string;
+  emailVerified: boolean;
   // GitHub OAuth connection status (token is never exposed)
   githubId?: number;
   githubUsername?: string;

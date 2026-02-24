@@ -3,20 +3,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { signIn } from 'next-auth/react';
 import { Button, Input } from '@/components/ui/form-elements';
 import { Card } from '@/components/ui/index';
 
-type Step = 'form' | 'otp';
+type Step = 'email' | 'otp' | 'reset';
 
-export default function RegisterPage() {
+export default function ForgotPasswordPage() {
   const router = useRouter();
-  const [step, setStep] = useState<Step>('form');
-  const [name, setName] = useState('');
+  const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -29,48 +27,38 @@ export default function RegisterPage() {
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  // ─── Step 1: Submit registration form ─────────────────────────
-  const handleSubmitForm = async (e: React.FormEvent) => {
+  // ─── Step 1: Submit email to receive OTP ──────────────────────
+  const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    if (name.trim().length < 2) {
-      setError('Name must be at least 2 characters');
-      return;
-    }
-
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError('Please enter your email address');
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          password,
+          email: trimmedEmail,
+          action: 'send-otp',
         }),
       });
 
       const data = (await res.json()) as { error?: string };
 
       if (!res.ok) {
-        setError(data.error || 'Registration failed');
+        setError(data.error || 'Failed to send verification code');
         setLoading(false);
         return;
       }
 
-      // Move to OTP step
+      // Always move to OTP step (anti-enumeration: server always returns success)
       setStep('otp');
       setResendCooldown(60);
       setLoading(false);
@@ -102,11 +90,11 @@ export default function RegisterPage() {
         body: JSON.stringify({
           email: email.trim(),
           otp: code,
-          purpose: 'register',
+          purpose: 'forgot-password',
         }),
       });
 
-      const data = (await res.json()) as { error?: string };
+      const data = (await res.json()) as { error?: string; verified?: boolean };
 
       if (!res.ok) {
         setError(data.error || 'Verification failed');
@@ -116,20 +104,53 @@ export default function RegisterPage() {
         return;
       }
 
-      // Account created — auto sign-in
-      const signInResult = await signIn('credentials', {
-        email: email.trim(),
-        password,
-        redirect: false,
+      // OTP verified — show password reset form
+      setStep('reset');
+      setLoading(false);
+    } catch {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  // ─── Step 3: Reset password ───────────────────────────────────
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          action: 'reset-password',
+        }),
       });
 
-      if (signInResult?.error) {
-        router.push('/login');
+      const data = (await res.json()) as { error?: string };
+
+      if (!res.ok) {
+        setError(data.error || 'Password reset failed');
+        setLoading(false);
         return;
       }
 
-      router.push('/');
-      router.refresh();
+      // Success — redirect to login
+      router.push('/login');
     } catch {
       setError('Something went wrong. Please try again.');
       setLoading(false);
@@ -142,12 +163,12 @@ export default function RegisterPage() {
     setError(null);
 
     try {
-      const res = await fetch('/api/auth/otp/send', {
+      const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim(),
-          purpose: 'register',
+          action: 'send-otp',
         }),
       });
 
@@ -213,6 +234,22 @@ export default function RegisterPage() {
     }
   };
 
+  // ─── Header text per step ─────────────────────────────────────
+  const headings: Record<Step, { title: string; subtitle: string }> = {
+    email: {
+      title: 'Forgot your password?',
+      subtitle: 'Enter your email and we\'ll send you a verification code',
+    },
+    otp: {
+      title: 'Check your email',
+      subtitle: `Enter the 6-digit code sent to ${email}`,
+    },
+    reset: {
+      title: 'Set a new password',
+      subtitle: 'Choose a strong password for your account',
+    },
+  };
+
   // ─── Render ───────────────────────────────────────────────────
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -221,33 +258,17 @@ export default function RegisterPage() {
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600">
             <svg className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611l-.772.13a18.142 18.142 0 01-6.126 0l-.772-.13c-1.717-.293-2.3-2.379-1.067-3.61L5 14.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-zinc-100">
-            {step === 'form' ? 'Create an account' : 'Verify your email'}
-          </h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            {step === 'form'
-              ? 'Get started with PageForge'
-              : `Enter the 6-digit code sent to ${email}`}
-          </p>
+          <h1 className="text-2xl font-bold text-zinc-100">{headings[step].title}</h1>
+          <p className="mt-1 text-sm text-zinc-500">{headings[step].subtitle}</p>
         </div>
 
         <Card>
-          {step === 'form' ? (
-            <form onSubmit={handleSubmitForm} className="space-y-4">
-              <Input
-                label="Name"
-                type="text"
-                placeholder="Your name"
-                value={name}
-                onChange={(e) => setName((e.target as HTMLInputElement).value)}
-                required
-                autoFocus
-                autoComplete="name"
-              />
-
+          {/* ─── Step 1: Enter Email ─────────────────────────────── */}
+          {step === 'email' && (
+            <form onSubmit={handleSendOTP} className="space-y-4">
               <Input
                 label="Email"
                 type="email"
@@ -255,27 +276,8 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail((e.target as HTMLInputElement).value)}
                 required
+                autoFocus
                 autoComplete="email"
-              />
-
-              <Input
-                label="Password"
-                type="password"
-                placeholder="At least 8 characters"
-                value={password}
-                onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
-                required
-                autoComplete="new-password"
-              />
-
-              <Input
-                label="Confirm Password"
-                type="password"
-                placeholder="Repeat your password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
-                required
-                autoComplete="new-password"
               />
 
               {error && (
@@ -285,10 +287,13 @@ export default function RegisterPage() {
               )}
 
               <Button type="submit" loading={loading} className="w-full">
-                Create Account
+                Send Verification Code
               </Button>
             </form>
-          ) : (
+          )}
+
+          {/* ─── Step 2: Enter OTP ───────────────────────────────── */}
+          {step === 'otp' && (
             <div className="space-y-6">
               {/* OTP Input */}
               <div className="flex justify-center gap-2" onPaste={handleOtpPaste}>
@@ -320,7 +325,7 @@ export default function RegisterPage() {
                 className="w-full"
                 disabled={otp.join('').length !== 6}
               >
-                Verify & Create Account
+                Verify Code
               </Button>
 
               <div className="text-center">
@@ -339,20 +344,56 @@ export default function RegisterPage() {
               <button
                 type="button"
                 onClick={() => {
-                  setStep('form');
+                  setStep('email');
                   setOtp(['', '', '', '', '', '']);
                   setError(null);
                 }}
                 className="w-full text-sm text-zinc-500 hover:text-zinc-300 transition-colors"
               >
-                Back to registration
+                Use a different email
               </button>
             </div>
+          )}
+
+          {/* ─── Step 3: Reset Password ──────────────────────────── */}
+          {step === 'reset' && (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <Input
+                label="New Password"
+                type="password"
+                placeholder="At least 8 characters"
+                value={password}
+                onChange={(e) => setPassword((e.target as HTMLInputElement).value)}
+                required
+                autoFocus
+                autoComplete="new-password"
+              />
+
+              <Input
+                label="Confirm New Password"
+                type="password"
+                placeholder="Repeat your new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
+                required
+                autoComplete="new-password"
+              />
+
+              {error && (
+                <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+                  {error}
+                </div>
+              )}
+
+              <Button type="submit" loading={loading} className="w-full">
+                Reset Password
+              </Button>
+            </form>
           )}
         </Card>
 
         <p className="mt-6 text-center text-sm text-zinc-500">
-          Already have an account?{' '}
+          Remember your password?{' '}
           <Link href="/login" className="text-blue-400 hover:text-blue-300 transition-colors">
             Sign in
           </Link>

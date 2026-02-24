@@ -1,3 +1,9 @@
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env from monorepo root (must run before any other imports read process.env)
+config({ path: resolve(__dirname, '../../.env') });
+
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';

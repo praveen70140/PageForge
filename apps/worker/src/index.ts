@@ -1,4 +1,9 @@
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load .env from monorepo root
+config({ path: resolve(__dirname, '../../../.env') });
+
 import { Worker } from 'bullmq';
 import Redis from 'ioredis';
 import { BUILD_QUEUE_NAME } from '@pageforge/shared';

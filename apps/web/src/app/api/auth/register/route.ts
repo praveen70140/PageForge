@@ -2,13 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { connectDatabase } from '@/lib/db';
 import { UserModel } from '@/lib/models';
+import { generateOTP, storeOTP, storePendingRegistration } from '@/lib/otp';
+import { sendRegistrationOTP } from '@/lib/email';
 import type { RegisterInput } from '@pageforge/shared';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LENGTH = 8;
 const BCRYPT_ROUNDS = 12;
 
-// POST /api/auth/register — Create a new account
+// POST /api/auth/register — Initiate registration (sends OTP, does NOT create user yet)
 export async function POST(req: NextRequest) {
   try {
     await connectDatabase();
@@ -56,22 +58,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ─── Create user ──────────────────────────────────────────
+    // ─── Store pending registration + send OTP ─────────────────
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    const user = await UserModel.create({
+    await storePendingRegistration(email, {
       name,
       email,
       passwordHash,
     });
 
+    const otp = generateOTP();
+    await storeOTP(email, otp, 'register');
+
+    try {
+      await sendRegistrationOTP(email, otp);
+    } catch (emailErr) {
+      console.error('[Register] Failed to send OTP email:', emailErr);
+      return NextResponse.json(
+        { error: 'Failed to send verification email. Please try again.' },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
-      {
-        id: user._id.toString(),
-        name: user.name,
-        email: user.email,
-      },
-      { status: 201 }
+      { message: 'Verification code sent to your email', email },
+      { status: 200 }
     );
   } catch (err) {
     console.error('[Register] Failed:', err);
