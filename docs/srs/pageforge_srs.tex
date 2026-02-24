@@ -65,19 +65,19 @@
 \renewcommand\section{\@startsection{section}{1}{\z@}%
   {-3.5ex \@plus -1ex \@minus -.2ex}%
   {2.3ex \@plus .2ex}%
-  {\needspace{6\baselineskip}\normalfont\Large\bfseries}}
+  {\needspace{3\baselineskip}\normalfont\Large\bfseries}}
 \renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
   {-3.25ex\@plus -1ex \@minus -.2ex}%
   {1.5ex \@plus .2ex}%
-  {\needspace{5\baselineskip}\normalfont\large\bfseries}}
+  {\needspace{2\baselineskip}\normalfont\large\bfseries}}
 \renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}%
   {-3.25ex\@plus -1ex \@minus -.2ex}%
   {1.5ex \@plus .2ex}%
-  {\needspace{4\baselineskip}\normalfont\normalsize\bfseries}}
+  {\normalfont\normalsize\bfseries}}
 \renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}%
   {3.25ex \@plus 1ex \@minus .2ex}%
   {-1em}%
-  {\needspace{4\baselineskip}\normalfont\normalsize\bfseries}}
+  {\normalfont\normalsize\bfseries}}
 \makeatother
 
 \begin{document}
@@ -106,7 +106,7 @@ Praveen & 2026-02-24 & Initial SRS and Design document & 1.0 \\
 \section{Introduction}
 
 \subsection{Purpose}
-This Software Requirements Specification (SRS) document describes the complete functional and non-functional requirements for \textbf{PageForge}, a self-hosted static site deployment platform, version 1.0. PageForge enables developers to build, deploy, and serve static websites from Git repositories or ZIP archives with automated build pipelines, custom domain support, and GitHub integration. This document covers the entire system including the web dashboard, REST API, build worker, and infrastructure components.
+This Software Requirements Specification (SRS) document describes the complete functional and non-functional requirements for \textbf{PageForge}, a self-hosted static site deployment platform, version 1.0. PageForge is inspired by \textbf{Cloudflare Pages} but takes a fundamentally different approach to build execution: where Cloudflare Pages spins up full virtual machines to build static sites, PageForge uses lightweight \textbf{Docker containers}, resulting in significantly faster build start-up times and lower resource overhead. PageForge enables developers to build, deploy, and serve static websites from Git repositories or ZIP archives with automated build pipelines, custom domain support, and GitHub integration --- all running entirely on the developer's own infrastructure. This document covers the entire system including the web dashboard, REST API, build worker, and infrastructure components.
 
 \subsection{Document Conventions}
 \begin{itemize}
@@ -122,15 +122,15 @@ This Software Requirements Specification (SRS) document describes the complete f
 \subsection{Intended Audience and Reading Suggestions}
 This document is intended for:
 \begin{itemize}
-    \item \textbf{Developers:} Sections 3--5 for system features, design, and architecture. Start with Section 4.1 (System Architecture) for an overview.
-    \item \textbf{Project Managers:} Sections 1--2 for scope and overview, Section 5 for traceability.
-    \item \textbf{Testers:} Sections 3.1--3.10 for feature requirements and stimulus/response sequences, Section 4.2 for sequence diagrams.
-    \item \textbf{Evaluators:} Section 4 (Software Design) for architecture, class diagrams, sequence diagrams, database schema, and security design. Section 5 for requirement-to-design traceability.
+    \item \textbf{Developers:} Sections 3--6 for external interfaces, system features, design, and architecture. Start with Section 5.1 (System Architecture) for an overview.
+    \item \textbf{Project Managers:} Sections 1--2 for scope and overview, Section 7 for traceability.
+    \item \textbf{Testers:} Sections 4.1--4.11 for feature requirements and stimulus/response sequences, Section 5.2 for sequence diagrams.
+    \item \textbf{Evaluators:} Section 5 (Software Design) for architecture, class diagrams, sequence diagrams, database schema, and security design. Section 7 for requirement-to-design traceability.
     \item \textbf{End Users:} Sections 1.4, 2.1--2.3 for product scope and user classes.
 \end{itemize}
 
 \subsection{Product Scope}
-PageForge is a self-hosted alternative to platforms like Vercel and Netlify, focused exclusively on static site deployment. It provides:
+PageForge is a self-hosted alternative to Cloudflare Pages, Vercel, and Netlify, focused exclusively on static site deployment. Unlike Cloudflare Pages which uses virtual machines for builds, PageForge leverages Docker containers for faster build initialization and lower overhead. It provides:
 \begin{itemize}
     \item A web dashboard for managing projects, deployments, environment variables, and custom domains.
     \item Git-based deployment from GitHub repositories (public and private) with OAuth integration.
@@ -158,15 +158,13 @@ The platform is designed for individual developers or small teams who want full 
     \item IEEE Std 830-1998, \textit{IEEE Recommended Practice for Software Requirements Specifications}.
 \end{enumerate}
 
-\newpage
-
 %===============================================================
 % SECTION 2: OVERALL DESCRIPTION
 %===============================================================
 \section{Overall Description}
 
 \subsection{Product Perspective}
-PageForge is a new, self-contained product that fills the gap between fully managed deployment platforms (Vercel, Netlify) and manual server configuration. It is designed to run entirely on a user's own infrastructure --- a single Linux server with Docker --- eliminating dependency on third-party hosting services.
+PageForge is a new, self-contained product that fills the gap between fully managed deployment platforms (Cloudflare Pages, Vercel, Netlify) and manual server configuration. While platforms like Cloudflare Pages rely on virtual machines for build isolation, PageForge uses Docker containers which offer faster cold-start times and more efficient resource utilization. It is designed to run entirely on a user's own infrastructure --- a single Linux server with Docker --- eliminating dependency on third-party hosting services.
 
 The system consists of four major subsystems:
 \begin{enumerate}
@@ -244,16 +242,58 @@ The major functions of PageForge are:
     \item For custom domains: users can configure CNAME records on their DNS provider.
 \end{itemize}
 
-\newpage
+%===============================================================
+% SECTION 3: EXTERNAL INTERFACE REQUIREMENTS
+%===============================================================
+\section{External Interface Requirements}
+
+\subsection{User Interfaces}
+\begin{description}
+    \item[UI-01] The web dashboard shall be a Next.js 14 App Router application served on port 3000, using TailwindCSS for styling with a dark mode default theme.
+    \item[UI-02] The dashboard shall provide the following primary screens: Login, Register (with OTP verification step), Forgot Password (three-step flow), Dashboard (project list), Project Detail (with Overview, Deployments, Environment, Domains, and Settings tabs), New Project Wizard (three-step), Deployment Detail (with build log viewer), and Settings (GitHub integration).
+    \item[UI-03] All forms shall display inline validation errors, loading spinners during submission, and toast notifications for success/failure outcomes.
+    \item[UI-04] The OTP verification screens shall present six individual digit input boxes with auto-advance on input, paste support for the full code, and auto-submit when all digits are filled.
+    \item[UI-05] The build log viewer shall display real-time streaming output with visual distinction between \texttt{stdout} (default), \texttt{stderr} (red), and \texttt{system} (blue/muted) messages, with auto-scroll to the latest entry.
+    \item[UI-06] All pages shall implement proper loading, error, and empty states. The dashboard shall display a centered empty-state prompt when no projects exist.
+    \item[UI-07] The interface shall be usable on modern desktop browsers (Chrome 90+, Firefox 90+, Safari 15+, Edge 90+). Mobile-responsive layout is not a v1.0 requirement.
+\end{description}
+
+\subsection{Hardware Interfaces}
+PageForge does not interface directly with any specialized hardware devices. The system requires:
+\begin{itemize}
+    \item A Linux server with network access (for serving the dashboard, APIs, and deployed sites).
+    \item Access to the Docker Engine socket (\texttt{/var/run/docker.sock}) for creating and managing build containers.
+    \item Sufficient disk space for MongoDB data, Redis persistence, MinIO artifact storage, and Docker images.
+\end{itemize}
+
+\subsection{Software Interfaces}
+\begin{description}
+    \item[SI-01 MongoDB 7.0+:] Primary data store for users, projects, and deployments. Accessed via Mongoose ODM over the MongoDB wire protocol (default port 27017). Used for persistent storage of all application state and build log history.
+    \item[SI-02 Redis 7.0+:] Used for three purposes: (1) BullMQ job queue for build jobs, (2) Pub/Sub channels for real-time build log streaming (\texttt{build-logs:\{deploymentId\}}), and (3) temporary storage of OTPs (5-minute TTL) and pending registration data (10-minute TTL). Accessed via \texttt{ioredis} client over the Redis protocol (default port 6379).
+    \item[SI-03 MinIO (S3-compatible):] Object storage for build artifacts and uploaded ZIP files. Accessed via the MinIO JavaScript SDK using S3-compatible API (default port 9000). Artifacts are stored under \texttt{artifacts/\{deploymentId\}/} and uploads under \texttt{uploads/\{slug\}/\{filename\}}.
+    \item[SI-04 Docker Engine 24+:] Build execution environment. Accessed via the Docker Engine API over the Unix socket (\texttt{/var/run/docker.sock}) using the \texttt{dockerode} library. The system creates ephemeral containers from the \texttt{node:20-alpine} image, executes build commands, extracts artifacts, and destroys containers.
+    \item[SI-05 Caddy 2.x:] Reverse proxy and static file server. Configured dynamically via the Caddy JSON Admin API (default \texttt{http://localhost:2019}). PageForge adds and removes routes to map project subdomains and custom domains to MinIO artifact paths.
+    \item[SI-06 GitHub API v3 (REST):] Used for two integrations: (1) OAuth App flow for user authorization (\texttt{github.com/login/oauth/authorize} and \texttt{github.com/login/oauth/access\_token}), and (2) fetching user profile and repository listings via \texttt{api.github.com}. Requires a registered GitHub OAuth App with \texttt{repo} scope.
+    \item[SI-07 SMTP Server:] Used for sending OTP emails during registration and password reset. Accessed via \texttt{nodemailer} over SMTP protocol. Configurable via \texttt{SMTP\_HOST}, \texttt{SMTP\_PORT}, \texttt{SMTP\_USER}, \texttt{SMTP\_PASS}, and \texttt{SMTP\_FROM} environment variables. Currently configured with Brevo (Sendinblue) SMTP relay.
+    \item[SI-08 Node.js 20+ Runtime:] Both the web application and worker process run on Node.js. The web app uses the Next.js custom server (\texttt{server.ts}) and the worker runs as a standalone Node.js process.
+\end{description}
+
+\subsection{Communications Interfaces}
+\begin{description}
+    \item[CI-01 HTTP/HTTPS:] All client-to-server communication uses HTTP (development) or HTTPS (production via Caddy TLS termination). The REST API follows standard HTTP methods (GET, POST, PATCH, PUT, DELETE) with JSON request/response bodies.
+    \item[CI-02 WebSocket:] Real-time build log streaming uses WebSocket connections at \texttt{ws://\{host\}/ws/logs/\{deploymentId\}}. The WebSocket server runs alongside the Next.js custom server and bridges Redis Pub/Sub messages to connected browser clients.
+    \item[CI-03 DNS:] Custom domain verification requires CNAME DNS record resolution. The system resolves CNAME records for user-provided domains and compares against the expected target (\texttt{\{slug\}.\{PAGEFORGE\_DOMAIN\}}).
+    \item[CI-04 Cloudflare Tunnel (Optional):] For public access without port forwarding, the system supports Cloudflare Tunnel (\texttt{cloudflared}) to expose the server securely. This is an optional deployment configuration, not a system requirement.
+\end{description}
 
 %===============================================================
-% SECTION 3: SYSTEM FEATURES (FUNCTIONAL REQUIREMENTS)
+% SECTION 4: SYSTEM FEATURES (FUNCTIONAL REQUIREMENTS)
 %===============================================================
 \section{System Features}
 
 \subsection{User Registration}
 \subsubsection{Description and Priority}
-Allows new users to create an account with name, email, and password. Email address is verified via OTP before account creation (see Section 3.3). \textbf{Priority: High.}
+Allows new users to create an account with name, email, and password. Email address is verified via OTP before account creation (see Section 4.3). \textbf{Priority: High.}
 
 \subsubsection{Stimulus/Response Sequences}
 \begin{enumerate}
@@ -272,7 +312,7 @@ Allows new users to create an account with name, email, and password. Email addr
     \item[FR-02] The system shall validate that all fields are non-empty and email is in valid format.
     \item[FR-03] The system shall reject registration if the email is already registered (HTTP 409).
     \item[FR-04] The system shall hash passwords using bcrypt with 12 salt rounds before storage.
-    \item[FR-05] The system shall require email OTP verification before finalizing account creation (see Section 3.3).
+    \item[FR-05] The system shall require email OTP verification before finalizing account creation (see Section 4.3).
     \item[FR-06] The system shall store the user in MongoDB with \texttt{createdAt} and \texttt{updatedAt} timestamps only after successful OTP verification, and return HTTP 201.
     \item[FR-07] The system shall redirect authenticated users away from the registration page to the dashboard.
 \end{description}
@@ -542,10 +582,8 @@ Allows users to reset their password by verifying their identity via a one-time 
     \item[FR-98] The system shall redirect to the login page after successful password reset.
 \end{description}
 
-\newpage
-
 %===============================================================
-% SECTION 4: SOFTWARE DESIGN
+% SECTION 5: SOFTWARE DESIGN
 %===============================================================
 \section{Software Design}
 
@@ -984,21 +1022,19 @@ createdAt & Date & auto, indexed & Creation timestamp \\
     \item Caddy routes are configured per-project to serve only the correct artifacts.
 \end{itemize}
 
-\newpage
-
 %===============================================================
-% SECTION 5: OTHER NONFUNCTIONAL REQUIREMENTS
+% SECTION 6: OTHER NONFUNCTIONAL REQUIREMENTS
 %===============================================================
 \section{Other Nonfunctional Requirements}
 
 \subsection{Performance Requirements}
 \begin{description}
-    \item[NFR-01] Dashboard pages shall load within 2 seconds on a standard broadband connection.
-    \item[NFR-02] API responses for CRUD operations shall complete within 500ms.
-    \item[NFR-03] Build log streaming latency shall be under 1 second from worker to browser.
-    \item[NFR-04] The system shall handle concurrent builds limited by Docker resource availability.
-    \item[NFR-05] Deployment status polling interval shall be 2 seconds.
-    \item[NFR-06] GitHub repository listing shall support pagination (configurable \texttt{per\_page}, default 30).
+    \item[NFR-01] Dashboard pages shall load promptly without noticeable delay on a standard broadband connection.
+    \item[NFR-02] API responses for CRUD operations shall feel near-instantaneous to the user under normal load.
+    \item[NFR-03] Build log streaming shall deliver output to the browser with minimal perceptible latency so the user experience feels real-time.
+    \item[NFR-04] The system shall support concurrent builds limited by the host machine's Docker resource availability (CPU, memory, disk I/O).
+    \item[NFR-05] Build start-up time shall be significantly faster than VM-based platforms (such as Cloudflare Pages) due to the use of lightweight Docker containers.
+    \item[NFR-06] GitHub repository listing shall support pagination to remain responsive regardless of how many repositories the user has.
 \end{description}
 
 \subsection{Safety Requirements}
@@ -1037,10 +1073,8 @@ createdAt & Date & auto, indexed & Creation timestamp \\
     \item[BR-05] Custom domains require DNS CNAME verification before activation.
 \end{description}
 
-\newpage
-
 %===============================================================
-% SECTION 6: TRACEABILITY
+% SECTION 7: TRACEABILITY
 %===============================================================
 \section{Traceability}
 
@@ -1118,30 +1152,8 @@ NFR-16 & OAuth CSRF Prevention & D-SEC-02 & Security Design \\
 \end{longtable}
 }
 
-% Reset heading definitions to defaults (remove \needspace that causes excessive page breaks)
-\makeatletter
-\renewcommand\section{\@startsection{section}{1}{\z@}%
-  {-3.5ex \@plus -1ex \@minus -.2ex}%
-  {2.3ex \@plus .2ex}%
-  {\normalfont\Large\bfseries}}
-\renewcommand\subsection{\@startsection{subsection}{2}{\z@}%
-  {-3.25ex\@plus -1ex \@minus -.2ex}%
-  {1.5ex \@plus .2ex}%
-  {\normalfont\large\bfseries}}
-\renewcommand\subsubsection{\@startsection{subsubsection}{3}{\z@}%
-  {-3.25ex\@plus -1ex \@minus -.2ex}%
-  {1.5ex \@plus .2ex}%
-  {\normalfont\normalsize\bfseries}}
-\renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}%
-  {3.25ex \@plus 1ex \@minus .2ex}%
-  {-1em}%
-  {\normalfont\normalsize\bfseries}}
-\makeatother
-
-\newpage
-
 %===============================================================
-% SECTION 7: OTHER REQUIREMENTS
+% SECTION 8: OTHER REQUIREMENTS
 %===============================================================
 \section{Other Requirements}
 \begin{itemize}
@@ -1151,8 +1163,6 @@ NFR-16 & OAuth CSRF Prevention & D-SEC-02 & Security Design \\
     \item \textbf{Reuse:} The \texttt{packages/shared} module is designed for reuse across web app and worker processes.
     \item \textbf{Deployment:} Infrastructure services are containerized via \texttt{docker-compose.yml}. Application processes (web, worker) run natively on the host.
 \end{itemize}
-
-\newpage
 
 %===============================================================
 % APPENDICES
