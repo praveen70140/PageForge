@@ -1,0 +1,57 @@
+@startuml seq_otp_login
+
+title Sequence Diagram: Email OTP Login (UC-03)
+
+actor "User" as U
+participant "Browser" as B
+participant "Login Page" as LP
+participant "POST /api/auth/otp/send" as SEND
+participant "POST /api/auth/otp/verify" as VERIFY
+participant "OTP Service" as OTP
+participant "Email Service" as EMAIL
+database "MongoDB" as DB
+
+U -> B: Navigate to /login
+B -> LP: Render login form
+LP --> U: Display form with\n"Login with OTP" option
+
+U -> LP: Enter email, click\n"Send OTP"
+LP -> SEND: POST {email}
+SEND -> DB: Check user exists\n(UserModel.findOne)
+
+alt User not found
+  DB --> SEND: null
+  SEND --> LP: 404 "User not found"
+  LP --> U: Show error
+else User exists
+  DB --> SEND: User found
+  SEND -> OTP: generateOTP(email)
+  OTP -> OTP: Generate 6-digit OTP\nStore with 5-min expiry
+  OTP --> SEND: OTP code
+  SEND -> EMAIL: sendOTPEmail(email, otp)
+  EMAIL --> SEND: Sent
+  SEND --> LP: 200 "OTP sent"
+  LP --> U: Show OTP input field
+
+  U -> LP: Enter 6-digit OTP
+  LP -> VERIFY: POST {email, otp}
+  VERIFY -> OTP: verifyOTP(email, otp)
+
+  alt OTP invalid or expired
+    OTP --> VERIFY: false
+    VERIFY --> LP: 401 "Invalid or expired OTP"
+    LP --> U: Show error
+  else OTP valid
+    OTP --> VERIFY: true
+    OTP -> OTP: Delete used OTP
+    VERIFY -> DB: Find user by email
+    DB --> VERIFY: User document
+    VERIFY -> VERIFY: Generate JWT token\n{id, name, email}
+    VERIFY --> LP: 200 {token, user}
+    LP -> LP: Set session cookie
+    LP -> B: router.push('/')
+    B --> U: Redirect to dashboard
+  end
+end
+
+@enduml

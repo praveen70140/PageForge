@@ -1,0 +1,48 @@
+@startuml seq_middleware
+
+title Sequence Diagram: Authentication Middleware Flow (UC-10)
+
+actor "User" as U
+participant "Browser" as B
+participant "Edge Middleware\n(auth.config.ts)" as MW
+participant "NextAuth JWT" as JWT
+participant "Protected Page/API" as PAGE
+participant "Login Page" as LP
+
+U -> B: Request any URL
+B -> MW: HTTP Request
+
+MW -> MW: Extract pathname
+
+alt Path is /login or /register
+  MW -> JWT: Check session token
+  alt Has valid session
+    JWT --> MW: Session (user authenticated)
+    MW --> B: 302 Redirect to /
+    B --> U: Redirect to dashboard
+  else No session
+    JWT --> MW: null
+    MW --> B: Allow through
+    B -> LP: Render login/register
+    LP --> U: Show auth form
+  end
+
+else Path is /api/auth/*
+  MW --> B: Allow through (always)
+  note right: NextAuth routes\nmust be public
+
+else Any other path (protected)
+  MW -> JWT: Check session token
+  alt Has valid session
+    JWT --> MW: Session {user: {id, name, email}}
+    MW --> B: Allow through
+    B -> PAGE: Render page/execute API
+    PAGE --> U: Protected content
+  else No session / invalid token
+    JWT --> MW: null
+    MW --> B: 302 Redirect to /login
+    B --> U: Login page
+  end
+end
+
+@enduml

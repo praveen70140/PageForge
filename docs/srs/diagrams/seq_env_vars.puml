@@ -1,0 +1,37 @@
+@startuml seq_env_vars
+
+title Sequence Diagram: Environment Variable Management (UC-09)
+
+actor "User" as U
+participant "Browser" as B
+participant "Environment Tab" as ET
+participant "GET /api/projects/\n{slug}/env" as GETENV
+participant "PUT /api/projects/\n{slug}/env" as PUTENV
+database "MongoDB" as DB
+
+U -> ET: Navigate to Environment tab
+ET -> GETENV: GET /api/projects/{slug}/env
+GETENV -> GETENV: requireAuth()
+GETENV -> DB: Find project\n(userId ownership check)
+DB --> GETENV: Project with\nenvironmentVariables[]
+GETENV --> ET: 200 {variables: [...]}
+ET --> U: Display variable list\n(values masked)
+
+U -> ET: Add/Edit/Remove variables
+U -> ET: Click "Save Changes"
+ET -> PUTENV: PUT {variables: [\n{key, value, encrypted},...\n]}
+PUTENV -> PUTENV: requireAuth()
+PUTENV -> DB: Find project\n+ ownership check
+DB --> PUTENV: Project
+PUTENV -> DB: Update\nenvironmentVariables = [...]
+DB --> PUTENV: Updated
+PUTENV --> ET: 200 {variables: [...]}
+ET --> U: Show "Saved" confirmation
+
+note over U
+  Environment variables are injected
+  into the Docker build container
+  at deployment time
+end note
+
+@enduml

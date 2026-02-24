@@ -1,0 +1,38 @@
+@startuml seq_login
+
+title Sequence Diagram: User Login with Credentials (UC-02)
+
+actor "User" as U
+participant "Browser" as B
+participant "Login Page" as LP
+participant "NextAuth\nCredentials Provider" as NA
+database "MongoDB" as DB
+
+U -> B: Navigate to /login
+B -> LP: Render login form
+LP --> U: Display form (email, password)
+
+U -> LP: Submit login form
+LP -> NA: signIn('credentials',\n{email, password, redirect:false})
+NA -> DB: Find user by email\n(UserModel.findOne)
+
+alt User not found
+  DB --> NA: null
+  NA --> LP: {error: "CredentialsSignin"}
+  LP --> U: "Invalid email or password"
+else User found
+  DB --> NA: User document\n(with passwordHash)
+  NA -> NA: bcrypt.compare(\npassword, passwordHash)
+  alt Password invalid
+    NA --> LP: {error: "CredentialsSignin"}
+    LP --> U: "Invalid email or password"
+  else Password valid
+    NA -> NA: Generate JWT token\n{id, name, email}
+    NA --> LP: {ok: true, url: "/"}
+    LP -> LP: Set session cookie
+    LP -> B: router.push('/')
+    B --> U: Redirect to dashboard
+  end
+end
+
+@enduml

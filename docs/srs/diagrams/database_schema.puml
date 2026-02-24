@@ -1,0 +1,104 @@
+@startuml database_schema
+
+title PageForge Database Schema (MongoDB)
+
+skinparam classFontSize 12
+skinparam classAttributeFontSize 10
+
+entity "users" as users {
+  * _id : ObjectId <<PK>>
+  --
+  * name : String
+  * email : String <<unique, indexed>>
+  * passwordHash : String
+  githubAccessToken : String <<select:false>>
+  githubId : Number
+  githubUsername : String
+  githubConnectedAt : Date
+  * createdAt : Date <<auto>>
+  * updatedAt : Date <<auto>>
+}
+
+entity "projects" as projects {
+  * _id : ObjectId <<PK>>
+  --
+  * userId : ObjectId <<FK:users, indexed>>
+  * name : String
+  * slug : String <<unique, indexed>>
+  * sourceType : Enum('git', 'zip')
+  gitUrl : String
+  gitBranch : String
+  gitProvider : Enum('github', 'other')
+  gitToken : String <<select:false>>
+  zipFileName : String
+  * installCommand : String
+  * buildCommand : String
+  * outputDirectory : String
+  environmentVariables : [EnvironmentVariable]
+  domains : [DomainEntry]
+  * createdAt : Date <<auto>>
+  * updatedAt : Date <<auto>>
+}
+
+entity "EnvironmentVariable\n(embedded)" as envvar {
+  * key : String
+  * value : String
+  * encrypted : Boolean
+}
+
+entity "DomainEntry\n(embedded)" as domain {
+  * domain : String
+  * cnameTarget : String
+  * verified : Boolean
+  verifiedAt : Date
+}
+
+entity "deployments" as deployments {
+  * _id : ObjectId <<PK>>
+  --
+  * projectId : ObjectId <<FK:projects, indexed>>
+  * projectSlug : String <<indexed>>
+  * status : Enum('queued','building',
+  .... 'uploading','ready','failed')
+  * trigger : Enum('manual', 'api')
+  * sourceSnapshot : SourceSnapshot
+  * buildConfig : BuildConfig
+  buildLogs : [LogEntry]
+  artifactPath : String
+  error : String
+  startedAt : Date
+  completedAt : Date
+  * createdAt : Date <<auto, indexed>>
+}
+
+entity "SourceSnapshot\n(embedded)" as snapshot {
+  * type : Enum('git', 'zip')
+  gitUrl : String
+  gitBranch : String
+  gitCommit : String
+  gitToken : String
+  zipPath : String
+}
+
+entity "BuildConfig\n(embedded)" as buildcfg {
+  * installCommand : String
+  * buildCommand : String
+  * outputDirectory : String
+}
+
+entity "LogEntry\n(embedded)" as logentry {
+  * timestamp : String
+  * stream : Enum('stdout','stderr','system')
+  * line : String
+}
+
+' Relationships
+users ||--o{ projects : "userId"
+projects ||--o{ deployments : "projectId"
+projects *-- envvar : "embedded[]"
+projects *-- domain : "embedded[]"
+deployments *-- snapshot : "embedded"
+deployments *-- buildcfg : "embedded"
+deployments *-- logentry : "embedded[]"
+
+@enduml

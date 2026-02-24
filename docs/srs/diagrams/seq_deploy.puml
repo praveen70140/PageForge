@@ -1,0 +1,90 @@
+@startuml seq_deploy
+
+title Sequence Diagram: Trigger Deployment & Build Process (UC-05)
+
+actor "User" as U
+participant "Browser" as B
+participant "Project Page" as PP
+participant "POST /api/projects/\n{slug}/deployments" as API
+participant "Build Queue\n(BullMQ)" as Q
+participant "Build Worker" as W
+participant "Docker Engine" as D
+participant "Build Logger\n(Redis PubSub)" as LOG
+participant "Artifact Manager\n(MinIO)" as MINIO
+participant "Caddy" as CAD
+database "MongoDB" as DB
+
+U -> PP: Click "Deploy" button
+PP -> API: POST /api/projects/{slug}/deployments
+
+API -> DB: Find project by slug\n(with userId check)
+DB --> API: Project document
+API -> DB: Get project gitToken\n(select: '+gitToken')
+
+alt No project PAT
+  API -> DB: Get user githubAccessToken\n(select: '+githubAccessToken')
+  DB --> API: User's GitHub token
+end
+
+API -> DB: Create Deployment\n(status: 'queued')
+DB --> API: Deployment created
+API -> Q: enqueueBuild(deploymentId)
+Q --> API: Job enqueued
+API --> PP: 201 {deployment}
+PP -> B: Navigate to\n/deployments/{id}
+B --> U: Show deployment log viewer
+
+== Async Build Process ==
+
+Q -> W: Process job(deploymentId)
+W -> DB: Find deployment
+DB --> W: Deployment document
+W -> DB: Update status: 'building'
+W -> LOG: publishStatus('building')
+LOG --> B: Status update (via polling)
+
+W -> D: Create container\n(node:20-alpine)
+note right of D
+  Container config:
+  - Memory: 512MB
+  - CPU: 1 core
+  - no-new-privileges
+  - Optional gVisor runtime
+  - GIT_AUTH_TOKEN env var
+  - ENV vars from project
+end note
+D --> W: Container ID
+
+W -> D: Start container
+D -> D: Execute build script:\n1. Install git (if needed)\n2. Configure git credentials\n3. git clone {repo} {branch}\n4. cd repo\n5. npm install\n6. npm run build
+W -> D: Stream multiplexed logs\n(stdout/stderr)
+D --> W: Log chunks (8-byte header)
+W -> W: Parse Docker stream\n(demux stdout/stderr)
+W -> W: sanitize(logLine, secrets)
+W -> LOG: publishLog(stream, line)
+W -> DB: Append to buildLogs[]
+LOG --> B: Log entries (via polling)
+
+alt Build succeeds
+  W -> D: Copy /app/{outputDir}\nfrom container as tar
+  D --> W: Tar archive buffer
+  W -> D: Remove container
+  W -> MINIO: Upload artifact\n(artifacts/{deploymentId}/)
+  MINIO --> W: Artifact path
+  W -> DB: Update: status='uploading',\nartifactPath
+  W -> LOG: publishStatus('uploading')
+
+  W -> CAD: Add route:\n{slug}.{domain} -> MinIO
+  CAD --> W: Route configured
+  W -> DB: Update: status='ready'
+  W -> LOG: publishStatus('ready')
+else Build fails
+  W -> D: Remove container
+  W -> DB: Update: status='failed',\nerror message
+  W -> LOG: publishStatus('failed')
+end
+
+LOG --> B: Final status (via polling)
+B --> U: Show build result
+
+@enduml

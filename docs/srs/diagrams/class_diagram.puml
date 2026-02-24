@@ -1,0 +1,281 @@
+@startuml class_diagram
+
+skinparam classAttributeIconSize 0
+skinparam classFontSize 12
+skinparam classAttributeFontSize 10
+skinparam classFontStyle bold
+skinparam packageFontSize 14
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+package "Authentication Module" {
+  class User {
+    - _id: ObjectId
+    - name: String
+    - email: String <<unique>>
+    - passwordHash: String
+    - githubAccessToken: String <<select:false>>
+    - githubId: Number
+    - githubUsername: String
+    - githubConnectedAt: Date
+    - createdAt: Date
+    - updatedAt: Date
+    + register(name, email, password): User
+    + login(email, password): JWT
+    + verifyOTP(email, otp): JWT
+    + sendOTP(email): void
+    + connectGitHub(code): void
+    + disconnectGitHub(): void
+    + getGitHubStatus(): GitHubStatus
+  }
+
+  class AuthConfig {
+    - providers: Provider[]
+    - session: SessionConfig
+    - pages: PageConfig
+    - trustHost: Boolean
+    + jwt(token, user): JWT
+    + session(session, token): Session
+    + authorized(auth, request): Boolean|Response
+  }
+
+  class AuthMiddleware {
+    - publicPaths: String[]
+    - authApiPrefix: String
+    + protect(request): Response
+    + redirectAuthenticated(request): Response
+  }
+
+  class OTPService {
+    - otpStore: Map<String, OTPRecord>
+    - OTP_EXPIRY: Number
+    + generateOTP(email): String
+    + verifyOTP(email, otp): Boolean
+    + sendOTPEmail(email, otp): void
+    + cleanupExpired(): void
+  }
+}
+
+package "Project Management Module" {
+  class Project {
+    - _id: ObjectId
+    - userId: ObjectId <<ref:User>>
+    - name: String
+    - slug: String <<unique>>
+    - sourceType: SourceType
+    - gitUrl: String
+    - gitBranch: String
+    - gitProvider: GitProvider
+    - gitToken: String <<select:false>>
+    - zipFileName: String
+    - installCommand: String
+    - buildCommand: String
+    - outputDirectory: String
+    - environmentVariables: EnvironmentVariable[]
+    - domains: DomainEntry[]
+    - createdAt: Date
+    - updatedAt: Date
+    + create(input: CreateProjectInput): Project
+    + update(slug, input: UpdateProjectInput): Project
+    + delete(slug): void
+    + getBySlug(slug): Project
+    + listByUser(userId): Project[]
+    + setEnvVars(variables): void
+    + addDomain(domain): DomainEntry
+    + verifyDomain(domain): Boolean
+    + removeDomain(domain): void
+  }
+
+  class EnvironmentVariable {
+    - key: String
+    - value: String
+    - encrypted: Boolean
+  }
+
+  class DomainEntry {
+    - domain: String
+    - cnameTarget: String
+    - verified: Boolean
+    - verifiedAt: Date
+  }
+}
+
+package "Deployment Module" {
+  class Deployment {
+    - _id: ObjectId
+    - projectId: ObjectId <<ref:Project>>
+    - projectSlug: String
+    - status: DeploymentStatus
+    - trigger: DeploymentTrigger
+    - sourceSnapshot: SourceSnapshot
+    - buildConfig: BuildConfig
+    - buildLogs: LogEntry[]
+    - artifactPath: String
+    - error: String
+    - startedAt: Date
+    - completedAt: Date
+    - createdAt: Date
+    + trigger(projectSlug): Deployment
+    + getById(id): Deployment
+    + listByProject(projectSlug): Deployment[]
+    + updateStatus(status): void
+    + appendLog(entry: LogEntry): void
+  }
+
+  class SourceSnapshot {
+    - type: SourceType
+    - gitUrl: String
+    - gitBranch: String
+    - gitCommit: String
+    - gitToken: String
+    - zipPath: String
+  }
+
+  class BuildConfig {
+    - installCommand: String
+    - buildCommand: String
+    - outputDirectory: String
+  }
+
+  class LogEntry {
+    - timestamp: String
+    - stream: LogStream
+    - line: String
+  }
+}
+
+package "Build Worker Module" {
+  class BuildWorker {
+    - queue: BullMQ.Queue
+    - worker: BullMQ.Worker
+    - connection: Redis
+    + processJob(job): void
+    + start(): void
+    + shutdown(): void
+  }
+
+  class Executor {
+    - DOCKER_SOCKET: String
+    - MEMORY_LIMIT: Number
+    - CPU_LIMIT: Number
+    - BUILD_IMAGE: String
+    - GVISOR_ENABLED: Boolean
+    + executeBuild(deployment): String
+    - createContainer(config): Container
+    - startContainer(id): void
+    - streamLogs(id): void
+    - extractArtifact(id, outputDir): Buffer
+    - removeContainer(id): void
+    - sanitize(text, secrets): String
+    - installGitIfNeeded(commands): String[]
+  }
+
+  class ArtifactManager {
+    - minioClient: Minio.Client
+    - bucket: String
+    + uploadArtifact(deploymentId, tarBuffer): String
+    + getArtifactUrl(path): String
+  }
+
+  class BuildLogger {
+    - redis: Redis
+    + publishLog(deploymentId, stream, line): void
+    + publishStatus(deploymentId, status): void
+    + publishSystemLog(deploymentId, message): void
+  }
+}
+
+package "Infrastructure Module" {
+  class CaddyManager {
+    - adminUrl: String
+    + addRoute(subdomain, artifactPath): void
+    + removeRoute(subdomain): void
+    - getRoutes(): Route[]
+    - setRoutes(routes): void
+  }
+
+  class MinioClient {
+    - endpoint: String
+    - port: Number
+    - accessKey: String
+    - secretKey: String
+    - bucket: String
+    + uploadFile(path, buffer): void
+    + getFile(path): Buffer
+    + deleteFiles(prefix): void
+  }
+
+  class RedisClient {
+    - url: String
+    + getConnection(): Redis
+    + publish(channel, message): void
+    + subscribe(channel, callback): void
+  }
+
+  class DatabaseConnection {
+    - uri: String
+    - cached: Connection
+    + connect(): Connection
+  }
+
+  class BuildQueue {
+    - queue: BullMQ.Queue
+    + enqueue(deploymentId): Job
+  }
+
+  class DNSResolver {
+    + verifyCNAME(domain, target): Boolean
+    + resolve(domain): String[]
+  }
+}
+
+package "GitHub Integration Module" {
+  class GitHubOAuth {
+    - clientId: String
+    - clientSecret: String
+    - authorizeUrl: String
+    - tokenUrl: String
+    + initiateOAuth(userId): RedirectURL
+    + handleCallback(code, state): AccessToken
+    + disconnect(userId): void
+    + getStatus(userId): GitHubStatus
+  }
+
+  class GitHubAPI {
+    - baseUrl: String
+    + listRepos(token, query, page): Repository[]
+    + getUserInfo(token): GitHubUser
+  }
+}
+
+' Relationships
+User "1" --> "*" Project : owns
+Project "1" --> "*" Deployment : has
+Deployment "1" --> "1" SourceSnapshot : contains
+Deployment "1" --> "1" BuildConfig : uses
+Deployment "1" --> "*" LogEntry : produces
+Project "1" --> "*" EnvironmentVariable : configures
+Project "1" --> "*" DomainEntry : maps
+
+AuthMiddleware ..> AuthConfig : uses
+AuthMiddleware ..> User : validates
+
+BuildWorker ..> Executor : delegates
+BuildWorker ..> BuildLogger : logs via
+BuildWorker ..> ArtifactManager : stores via
+BuildWorker ..> Deployment : updates
+BuildWorker ..> CaddyManager : configures routes
+
+Executor ..> BuildLogger : publishes logs
+ArtifactManager ..> MinioClient : stores to
+BuildQueue ..> RedisClient : enqueues via
+
+GitHubOAuth ..> User : updates token
+GitHubAPI ..> GitHubOAuth : uses token from
+Project ..> GitHubAPI : imports from
+
+CaddyManager ..> MinioClient : proxies to
+
+OTPService ..> User : authenticates
+
+@enduml

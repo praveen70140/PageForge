@@ -1,0 +1,58 @@
+@startuml seq_domain
+
+title Sequence Diagram: Custom Domain Management (UC-07)
+
+actor "User" as U
+participant "Browser" as B
+participant "Domains Tab" as DT
+participant "POST /api/projects/\n{slug}/domains" as ADD
+participant "POST /api/projects/\n{slug}/domains/{domain}" as VERIFY
+participant "DELETE /api/projects/\n{slug}/domains/{domain}" as DEL
+participant "DNS Resolver" as DNS
+participant "Caddy Manager" as CAD
+database "MongoDB" as DB
+
+== Add Domain ==
+U -> DT: Enter custom domain\n"app.example.com"
+DT -> ADD: POST {domain: "app.example.com"}
+ADD -> ADD: Validate domain format
+ADD -> DB: Find project, check ownership
+DB --> ADD: Project
+ADD -> ADD: Generate CNAME target:\n{slug}.{PAGEFORGE_DOMAIN}
+ADD -> DB: Push to domains[]\n{domain, cnameTarget,\nverified: false}
+DB --> ADD: Updated project
+ADD --> DT: 201 {domain, cnameTarget}
+DT --> U: Show domain with\n"Pending" status\nCNAME target to configure
+
+== Verify Domain (after DNS setup) ==
+U -> DT: Click "Verify" button
+DT -> VERIFY: POST /domains/{domain}
+VERIFY -> DB: Find project
+DB --> VERIFY: Project with domain entry
+VERIFY -> DNS: dns.resolveCname(\n"app.example.com")
+
+alt CNAME not found or incorrect
+  DNS --> VERIFY: Error / wrong target
+  VERIFY --> DT: 400 "CNAME not verified"
+  DT --> U: Show "Not verified" status
+else CNAME matches target
+  DNS --> VERIFY: CNAME matches\n{slug}.{PAGEFORGE_DOMAIN}
+  VERIFY -> DB: Update domain:\nverified=true, verifiedAt=now
+  DB --> VERIFY: Updated
+  VERIFY -> CAD: Add route for\ncustom domain
+  CAD --> VERIFY: Route added
+  VERIFY --> DT: 200 {verified: true}
+  DT --> U: Show "Verified" badge
+end
+
+== Remove Domain ==
+U -> DT: Click "Remove" on domain
+DT -> DEL: DELETE /domains/{domain}
+DEL -> DB: Pull from domains[]
+DB --> DEL: Updated
+DEL -> CAD: Remove route for domain
+CAD --> DEL: Route removed
+DEL --> DT: 200 {removed: true}
+DT --> U: Domain removed from list
+
+@enduml

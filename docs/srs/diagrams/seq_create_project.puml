@@ -1,0 +1,47 @@
+@startuml seq_create_project
+
+title Sequence Diagram: Create New Project (UC-04)
+
+actor "User" as U
+participant "Browser" as B
+participant "New Project Page\n(3-step wizard)" as NP
+participant "GET /api/auth/\ngithub/status" as GHS
+participant "GET /api/github/repos" as GR
+participant "POST /api/projects" as API
+database "MongoDB" as DB
+
+U -> B: Navigate to /new
+B -> NP: Render Step 1\n(Name & Source Type)
+NP -> GHS: Check GitHub connection
+GHS --> NP: {connected, githubUsername}
+
+U -> NP: Enter project name\nSelect "Git Repository"
+NP --> U: Show Step 2 (Source Config)
+
+alt GitHub Connected
+  NP -> GR: GET /api/github/repos
+  GR --> NP: List of repositories
+  NP --> U: Show repo picker + search
+
+  U -> NP: Select repository from list
+  NP -> NP: Auto-fill gitUrl, gitBranch,\ngitProvider='github'
+else GitHub Not Connected
+  NP --> U: Show "Connect GitHub" button\n+ manual URL input
+  U -> NP: Enter git URL manually
+end
+
+NP --> U: Show Step 3 (Build Config)
+U -> NP: Configure install/build\ncommands and output dir
+U -> NP: Click "Create Project"
+
+NP -> API: POST {name, sourceType, gitUrl,\ngitBranch, gitProvider, ...buildConfig}
+API -> API: Validate input
+API -> API: Generate slug from name
+API -> API: requireAuth() - get userId
+API -> DB: Create Project document
+DB --> API: Project created
+API --> NP: 201 {project}
+NP -> B: router.push('/projects/{slug}')
+B --> U: Redirect to project page
+
+@enduml

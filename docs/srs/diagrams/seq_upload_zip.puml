@@ -1,0 +1,47 @@
+@startuml seq_upload_zip
+
+title Sequence Diagram: ZIP Upload & Deploy (UC-08)
+
+actor "User" as U
+participant "Browser" as B
+participant "Project Page" as PP
+participant "POST /api/upload/{slug}" as UP
+participant "MinIO" as MINIO
+participant "POST /api/projects/\n{slug}/deployments" as DEP
+participant "Build Queue" as Q
+database "MongoDB" as DB
+
+U -> PP: Select "Upload ZIP" tab
+U -> PP: Choose ZIP file
+PP -> UP: POST multipart/form-data\n{file: archive.zip}
+
+UP -> UP: requireAuth()
+UP -> DB: Find project by slug\n+ ownership check
+DB --> UP: Project
+
+UP -> UP: Parse multipart form data
+UP -> UP: Validate file exists
+UP -> MINIO: Upload to\nuploads/{slug}/{filename}
+MINIO --> UP: Upload successful
+
+UP -> DB: Update project:\nzipFileName = filename
+DB --> UP: Updated
+
+UP --> PP: 200 {fileName, path}
+PP --> U: Show "Upload complete"
+
+U -> PP: Click "Deploy"
+PP -> DEP: POST /api/projects/{slug}/deployments
+DEP -> DB: Create deployment\nsourceSnapshot.type = 'zip'\nsourceSnapshot.zipPath = path
+DB --> DEP: Deployment created
+DEP -> Q: enqueueBuild(deploymentId)
+Q --> DEP: Job enqueued
+DEP --> PP: 201 {deployment}
+
+note over Q
+  Worker downloads ZIP from MinIO
+  instead of git clone, extracts
+  and runs build commands
+end note
+
+@enduml

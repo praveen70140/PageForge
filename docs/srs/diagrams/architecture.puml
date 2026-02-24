@@ -1,0 +1,82 @@
+@startuml architecture
+
+title PageForge System Architecture
+
+skinparam componentFontSize 12
+skinparam packageFontSize 14
+skinparam rectangleFontSize 12
+skinparam arrowFontSize 10
+
+actor "User" as user
+cloud "Internet" as inet
+
+rectangle "Cloudflare Tunnel\n(Optional)" as cf #LightBlue
+
+rectangle "PageForge Platform" {
+
+  rectangle "Frontend & API Layer" {
+    component [Next.js 14\nApp Router\n(Dashboard UI)] as nextjs
+    component [REST API\n(14 endpoints)] as api
+    component [Auth Middleware\n(Edge Runtime)] as mw
+    component [NextAuth v5\n(JWT Sessions)] as auth
+    component [WebSocket Server\n(Build Logs)] as ws
+  }
+
+  rectangle "Build Pipeline" {
+    component [BullMQ\nJob Queue] as queue
+    component [Build Worker\n(Node.js Process)] as worker
+    component [Docker Engine\n(Build Containers)] as docker
+  }
+
+  rectangle "Data Layer" {
+    database "MongoDB\n(Users, Projects,\nDeployments)" as mongo
+    database "Redis\n(Queue, PubSub,\nLog Streaming)" as redis
+    database "MinIO\n(S3-compatible\nArtifact Storage)" as minio
+  }
+
+  rectangle "Reverse Proxy & Serving" {
+    component [Caddy Server\n(Dynamic Routes\nvia Admin API)] as caddy
+  }
+}
+
+rectangle "External Services" {
+  component [GitHub OAuth\n(Token Exchange)] as github
+  component [GitHub API\n(Repos, User Info)] as ghapi
+}
+
+' User flow
+user --> inet
+inet --> cf
+cf --> caddy
+
+' Caddy routing
+caddy --> nextjs : dashboard.*
+caddy --> minio : *.domain\n(static sites)
+
+' Frontend to backend
+nextjs --> mw : All requests
+mw --> auth : JWT validation
+mw --> api : Protected routes
+nextjs --> ws : WebSocket\n(build logs)
+
+' API to data
+api --> mongo : CRUD operations
+api --> redis : Pub/Sub
+api --> minio : File uploads
+api --> queue : Enqueue builds
+api --> github : OAuth flow
+api --> ghapi : List repos
+
+' Build pipeline
+queue --> redis : Job storage
+redis --> worker : Job processing
+worker --> docker : Create & run\nbuild containers
+worker --> mongo : Update status\n& logs
+worker --> redis : Publish logs\n(PubSub)
+worker --> minio : Upload artifacts
+worker --> caddy : Configure routes\n(Admin API)
+
+' WebSocket
+ws --> redis : Subscribe to\nbuild-logs:{id}
+
+@enduml

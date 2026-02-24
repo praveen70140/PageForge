@@ -1,0 +1,34 @@
+@startuml seq_register
+
+title Sequence Diagram: User Registration (UC-01)
+
+actor "User" as U
+participant "Browser" as B
+participant "Register Page" as RP
+participant "POST /api/auth/register" as API
+database "MongoDB" as DB
+
+U -> B: Navigate to /register
+B -> RP: Render registration form
+RP --> U: Display form (name, email, password)
+
+U -> RP: Submit registration form
+RP -> API: POST {name, email, password}
+API -> API: Validate input fields
+API -> DB: Check if email exists\n(UserModel.findOne)
+
+alt Email already exists
+  DB --> API: User found
+  API --> RP: 409 Conflict\n"Email already registered"
+  RP --> U: Show error message
+else Email available
+  DB --> API: null (not found)
+  API -> API: Hash password\n(bcrypt, 12 rounds)
+  API -> DB: Create User document\n(UserModel.create)
+  DB --> API: New User created
+  API --> RP: 201 Created\n{id, name, email}
+  RP -> RP: Redirect to /login
+  RP --> U: Show login page
+end
+
+@enduml

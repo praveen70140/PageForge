@@ -1,0 +1,49 @@
+@startuml seq_github_oauth
+
+title Sequence Diagram: GitHub OAuth Connection (UC-06)
+
+actor "User" as U
+participant "Browser" as B
+participant "Settings Page" as SP
+participant "GET /api/auth/github" as INIT
+participant "GitHub OAuth\n(github.com)" as GH
+participant "GET /api/auth/\ngithub/callback" as CB
+database "MongoDB" as DB
+
+U -> SP: Click "Connect GitHub"
+SP -> B: window.location =\n/api/auth/github
+
+B -> INIT: GET /api/auth/github
+INIT -> INIT: requireAuth()
+INIT -> INIT: Build OAuth URL:\nclient_id, redirect_uri,\nscope='repo', state=userId
+INIT --> B: 302 Redirect to\ngithub.com/login/oauth/authorize
+
+B -> GH: Authorization page
+GH --> U: "Authorize PageForge?\nRepo access (read/write)"
+
+alt User denies
+  GH --> B: Redirect to callback\n?error=access_denied
+  B -> CB: GET /callback?error=access_denied
+  CB --> B: 302 /settings?github_error=...
+  B --> U: Show error on settings
+else User authorizes
+  GH --> B: Redirect to callback\n?code=XXX&state=userId
+  B -> CB: GET /callback?code=XXX&state=userId
+  CB -> CB: requireAuth()
+  CB -> CB: Verify state == userId
+
+  CB -> GH: POST /login/oauth/access_token\n{client_id, client_secret, code}
+  GH --> CB: {access_token: "gho_..."}
+
+  CB -> GH: GET /user\n(Authorization: Bearer token)
+  GH --> CB: {id: 12345, login: "username"}
+
+  CB -> DB: Update User:\ngithubAccessToken, githubId,\ngithubUsername, githubConnectedAt
+  DB --> CB: Updated
+
+  CB --> B: 302 /settings?github_connected=true
+  B -> SP: Reload settings page
+  SP --> U: Show "Connected as @username"
+end
+
+@enduml
