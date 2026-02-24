@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { connectDatabase } from '@/lib/db';
 import { UserModel } from '@/lib/models';
 import { requireAuth, errorResponse, jsonResponse } from '@/lib/api-utils';
@@ -6,8 +6,11 @@ import { requireAuth, errorResponse, jsonResponse } from '@/lib/api-utils';
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || '';
 const GITHUB_AUTHORIZE_URL = 'https://github.com/login/oauth/authorize';
 
+// Use AUTH_URL as the canonical base — req.nextUrl.origin resolves to localhost behind a reverse proxy
+const BASE_URL = process.env.AUTH_URL || 'http://localhost:3000';
+
 // GET /api/auth/github — Redirect user to GitHub OAuth consent screen
-export async function GET(req: NextRequest) {
+export async function GET() {
   const authResult = await requireAuth();
   if (authResult.error) return authResult.error;
 
@@ -16,7 +19,7 @@ export async function GET(req: NextRequest) {
   }
 
   // Build the OAuth authorization URL
-  const redirectUri = new URL('/api/auth/github/callback', req.nextUrl.origin).toString();
+  const redirectUri = new URL('/api/auth/github/callback', BASE_URL).toString();
   const state = authResult.userId; // We pass userId as state so the callback knows which user to update
 
   const params = new URLSearchParams({
