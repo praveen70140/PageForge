@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Input, Select } from '@/components/ui/form-elements';
 import { Card } from '@/components/ui/index';
-import type { CreateProjectInput } from '@pageforge/shared';
+import type { CreateProjectInput, GitProvider } from '@pageforge/shared';
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -17,6 +17,8 @@ export default function NewProjectPage() {
     sourceType: 'git',
     gitUrl: '',
     gitBranch: 'main',
+    gitProvider: 'github',
+    gitToken: '',
     installCommand: 'npm install',
     buildCommand: 'npm run build',
     outputDirectory: 'dist',
@@ -124,6 +126,16 @@ export default function NewProjectPage() {
 
             {form.sourceType === 'git' && (
               <>
+                <Select
+                  label="Git Provider"
+                  value={form.gitProvider || 'github'}
+                  onChange={(e) => updateField('gitProvider', (e.target as HTMLSelectElement).value as GitProvider)}
+                  options={[
+                    { value: 'github', label: 'GitHub' },
+                    { value: 'gitlab', label: 'GitLab' },
+                    { value: 'other', label: 'Other (self-hosted)' },
+                  ]}
+                />
                 <Input
                   label="Repository URL"
                   placeholder="https://github.com/user/repo.git"
@@ -136,6 +148,31 @@ export default function NewProjectPage() {
                   value={form.gitBranch || ''}
                   onChange={(e) => updateField('gitBranch', (e.target as HTMLInputElement).value)}
                 />
+
+                {/* Private repo access token */}
+                <div className="space-y-1.5">
+                  <Input
+                    label="Access Token (for private repos)"
+                    placeholder={
+                      form.gitProvider === 'github'
+                        ? 'ghp_xxxxxxxxxxxxxxxxxxxx'
+                        : form.gitProvider === 'gitlab'
+                        ? 'glpat-xxxxxxxxxxxxxxxxxxxx'
+                        : 'your-access-token'
+                    }
+                    type="password"
+                    value={form.gitToken || ''}
+                    onChange={(e) => updateField('gitToken', (e.target as HTMLInputElement).value)}
+                  />
+                  <p className="text-xs text-zinc-500">
+                    {form.gitProvider === 'github'
+                      ? 'Create a fine-grained token at GitHub > Settings > Developer Settings > Personal access tokens. Grant "Contents" read-only access to your repo.'
+                      : form.gitProvider === 'gitlab'
+                      ? 'Create a project or personal access token at GitLab > Settings > Access Tokens with "read_repository" scope.'
+                      : 'Provide a personal access token with repository read access.'}
+                    {' '}Leave blank for public repos.
+                  </p>
+                </div>
               </>
             )}
 

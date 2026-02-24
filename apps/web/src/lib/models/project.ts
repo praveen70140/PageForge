@@ -1,5 +1,5 @@
 import mongoose, { Schema, Document, Model, Types } from 'mongoose';
-import type { Project, SourceType, EnvironmentVariable, DomainEntry } from '@pageforge/shared';
+import type { Project, SourceType, EnvironmentVariable, DomainEntry, GitProvider } from '@pageforge/shared';
 
 // ─── Sub-schemas ─────────────────────────────────────────────────
 
@@ -36,6 +36,8 @@ const ProjectSchema = new Schema<ProjectDocument>(
     sourceType: { type: String, required: true, enum: ['git', 'zip'] as SourceType[] },
     gitUrl: { type: String },
     gitBranch: { type: String, default: 'main' },
+    gitProvider: { type: String, enum: ['github', 'gitlab', 'other'] as GitProvider[] },
+    gitToken: { type: String, select: false }, // Never included in queries by default
     zipFileName: { type: String },
     installCommand: { type: String, default: 'npm install' },
     buildCommand: { type: String, default: 'npm run build' },
@@ -45,6 +47,21 @@ const ProjectSchema = new Schema<ProjectDocument>(
   },
   {
     timestamps: true,
+    toJSON: {
+      transform(_doc, ret) {
+        // Never leak gitToken to API responses; expose hasGitToken boolean instead
+        ret.hasGitToken = !!ret.gitToken;
+        delete ret.gitToken;
+        return ret;
+      },
+    },
+    toObject: {
+      transform(_doc, ret) {
+        ret.hasGitToken = !!ret.gitToken;
+        delete ret.gitToken;
+        return ret;
+      },
+    },
   }
 );
 

@@ -33,6 +33,8 @@ const ProjectSchema = new Schema(
     sourceType: { type: String, required: true, enum: ['git', 'zip'] },
     gitUrl: { type: String },
     gitBranch: { type: String, default: 'main' },
+    gitProvider: { type: String, enum: ['github', 'gitlab', 'other'] },
+    gitToken: { type: String },
     zipFileName: { type: String },
     installCommand: { type: String, default: 'npm install' },
     buildCommand: { type: String, default: 'npm run build' },
@@ -49,6 +51,7 @@ const SourceSnapshotSchema = new Schema(
     gitUrl: { type: String },
     gitBranch: { type: String },
     gitCommit: { type: String },
+    gitToken: { type: String },
     zipPath: { type: String },
   },
   { _id: false }

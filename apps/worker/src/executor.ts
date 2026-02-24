@@ -23,6 +23,7 @@ interface DeploymentDoc {
     type: 'git' | 'zip';
     gitUrl?: string;
     gitBranch?: string;
+    gitToken?: string;
     zipPath?: string;
   };
   buildConfig: {
@@ -103,8 +104,13 @@ export async function handleBuildJob(data: BuildJobData): Promise<void> {
       ...project.environmentVariables.map((v) => `${v.key}=${v.value}`),
     ];
 
-    // Build the shell script to execute inside the container
+    // Inject git auth token as env var (never in the build script text)
     const { sourceSnapshot, buildConfig } = deployment;
+    if (sourceSnapshot.gitToken) {
+      envVars.push(`GIT_AUTH_TOKEN=${sourceSnapshot.gitToken}`);
+    }
+
+    // Build the shell script to execute inside the container
     const buildScript = generateBuildScript(sourceSnapshot, buildConfig);
 
     await publishSystemLog(deploymentId, `Using image: ${BUILD_IMAGE}`);
@@ -153,7 +159,10 @@ export async function handleBuildJob(data: BuildJobData): Promise<void> {
 
     await publishSystemLog(deploymentId, `Container started: ${container.id.slice(0, 12)}`);
 
-    // Stream logs
+    // Stream logs (sanitize any secrets from output)
+    const secrets: string[] = [];
+    if (sourceSnapshot.gitToken) secrets.push(sourceSnapshot.gitToken);
+
     const logStream = await container.logs({
       follow: true,
       stdout: true,
@@ -162,7 +171,7 @@ export async function handleBuildJob(data: BuildJobData): Promise<void> {
     });
 
     // Process log stream
-    await streamContainerLogs(logStream, deploymentId);
+    await streamContainerLogs(logStream, deploymentId, secrets);
 
     // Wait for container to finish
     const result = await container.wait();
@@ -265,6 +274,17 @@ function generateBuildScript(
       `(apk add --no-cache git 2>/dev/null || (apt-get update -qq && apt-get install -y -qq git 2>/dev/null)) || true`
     );
     const branch = source.gitBranch || 'main';
+
+    // Build the clone URL — inject token for private repo auth
+    // Token is passed via GIT_AUTH_TOKEN env var to avoid leaking in the script
+    if (source.gitToken) {
+      lines.push(
+        `echo "Configuring git credentials..."`,
+        // Use git credential helper to inject the token without exposing it in clone URL logs
+        `git config --global credential.helper '!f() { echo "username=oauth2"; echo "password=$GIT_AUTH_TOKEN"; }; f'`,
+      );
+    }
+
     lines.push(
       `echo "Cloning repository..."`,
       `git clone --depth 1 --branch "${branch}" "${source.gitUrl}" app`,
@@ -349,10 +369,12 @@ async function ensureImage(image: string, deploymentId: string): Promise<void> {
 
 /**
  * Stream container logs and publish them via Redis.
+ * Sanitizes any secrets from log output before publishing.
  */
 function streamContainerLogs(
   logStream: NodeJS.ReadableStream,
-  deploymentId: string
+  deploymentId: string,
+  secrets: string[] = []
 ): Promise<void> {
   return new Promise((resolve) => {
     let buffer = '';
@@ -373,13 +395,13 @@ function streamContainerLogs(
           // Partial frame, read what we can
           const partial = chunk.subarray(offset).toString('utf8');
           const stream = streamType === 2 ? 'stderr' : 'stdout';
-          processLines(partial, deploymentId, stream as 'stdout' | 'stderr');
+          processLines(partial, deploymentId, stream as 'stdout' | 'stderr', secrets);
           break;
         }
 
         const payload = chunk.subarray(offset, offset + payloadSize).toString('utf8');
         const stream = streamType === 2 ? 'stderr' : 'stdout';
-        processLines(payload, deploymentId, stream as 'stdout' | 'stderr');
+        processLines(payload, deploymentId, stream as 'stdout' | 'stderr', secrets);
 
         offset += payloadSize;
       }
@@ -391,19 +413,35 @@ function streamContainerLogs(
 }
 
 /**
+ * Sanitize secrets from a string (replace with [REDACTED]).
+ */
+function sanitize(text: string, secrets: string[]): string {
+  let result = text;
+  for (const secret of secrets) {
+    if (secret && secret.length > 0) {
+      // Use split+join instead of regex to avoid special char issues
+      result = result.split(secret).join('[REDACTED]');
+    }
+  }
+  return result;
+}
+
+/**
  * Process text into individual lines and publish each.
  */
 function processLines(
   text: string,
   deploymentId: string,
-  stream: 'stdout' | 'stderr'
+  stream: 'stdout' | 'stderr',
+  secrets: string[] = []
 ): void {
   const lines = text.split('\n');
   for (const line of lines) {
     const trimmed = line.trimEnd();
     if (trimmed) {
+      const safe = secrets.length > 0 ? sanitize(trimmed, secrets) : trimmed;
       // Fire and forget — don't block log processing
-      publishLog(deploymentId, trimmed, stream).catch(() => {});
+      publishLog(deploymentId, safe, stream).catch(() => {});
     }
   }
 }

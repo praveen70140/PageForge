@@ -59,6 +59,8 @@ export async function POST(req: NextRequest) {
       sourceType: body.sourceType,
       gitUrl: body.gitUrl,
       gitBranch: body.gitBranch || 'main',
+      gitProvider: body.gitProvider,
+      gitToken: body.gitToken || undefined,
       installCommand: body.installCommand || 'npm install',
       buildCommand: body.buildCommand || 'npm run build',
       outputDirectory: body.outputDirectory || 'dist',

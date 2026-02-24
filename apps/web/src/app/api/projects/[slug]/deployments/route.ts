@@ -42,7 +42,10 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
 
     await connectDatabase();
     const { slug } = await ctx.params;
-    const project = await ProjectModel.findOne({ slug, userId: authResult.userId }).lean();
+    // Include gitToken (select: false) so we can pass it to the build worker
+    const project = await ProjectModel.findOne({ slug, userId: authResult.userId })
+      .select('+gitToken')
+      .lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -75,6 +78,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
         type: project.sourceType,
         gitUrl: project.gitUrl,
         gitBranch: project.gitBranch,
+        gitToken: project.gitToken || undefined,
         zipPath: project.zipFileName
           ? `uploads/${project.slug}/${project.zipFileName}`
           : undefined,

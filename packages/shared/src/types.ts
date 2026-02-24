@@ -23,6 +23,8 @@ export interface LoginInput {
 
 export type SourceType = 'git' | 'zip';
 
+export type GitProvider = 'github' | 'gitlab' | 'other';
+
 export interface EnvironmentVariable {
   key: string;
   value: string;
@@ -50,6 +52,8 @@ export interface Project {
   sourceType: SourceType;
   gitUrl?: string;
   gitBranch?: string;
+  gitProvider?: GitProvider;
+  hasGitToken?: boolean; // Never expose the actual token to the client
   zipFileName?: string;
   installCommand: string;
   buildCommand: string;
@@ -76,6 +80,7 @@ export interface SourceSnapshot {
   gitUrl?: string;
   gitBranch?: string;
   gitCommit?: string;
+  gitToken?: string; // Injected at deployment time, never persisted in deployment logs
   zipPath?: string;
 }
 
@@ -112,6 +117,8 @@ export interface CreateProjectInput {
   sourceType: SourceType;
   gitUrl?: string;
   gitBranch?: string;
+  gitProvider?: GitProvider;
+  gitToken?: string;
   installCommand?: string;
   buildCommand?: string;
   outputDirectory?: string;
@@ -122,6 +129,9 @@ export interface UpdateProjectInput {
   sourceType?: SourceType;
   gitUrl?: string;
   gitBranch?: string;
+  gitProvider?: GitProvider;
+  gitToken?: string;
+  removeGitToken?: boolean; // Allow removing the token
   installCommand?: string;
   buildCommand?: string;
   outputDirectory?: string;

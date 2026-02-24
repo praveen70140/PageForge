@@ -39,9 +39,21 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     const { slug } = await ctx.params;
     const body = (await req.json()) as UpdateProjectInput;
 
+    // Build update object — handle gitToken separately
+    const { gitToken, removeGitToken, ...rest } = body;
+    const update: Record<string, unknown> = { $set: rest };
+
+    if (removeGitToken) {
+      // Unset the token entirely
+      update.$unset = { gitToken: 1 };
+    } else if (gitToken && gitToken.trim()) {
+      // Set the new token (only if non-empty)
+      (update.$set as Record<string, unknown>).gitToken = gitToken.trim();
+    }
+
     const project = await ProjectModel.findOneAndUpdate(
       { slug, userId: authResult.userId },
-      { $set: body },
+      update,
       { new: true, runValidators: true }
     ).lean();
 

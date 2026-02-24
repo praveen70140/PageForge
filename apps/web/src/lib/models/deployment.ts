@@ -14,6 +14,7 @@ const SourceSnapshotSchema = new Schema(
     gitUrl: { type: String },
     gitBranch: { type: String },
     gitCommit: { type: String },
+    gitToken: { type: String },
     zipPath: { type: String },
   },
   { _id: false }
