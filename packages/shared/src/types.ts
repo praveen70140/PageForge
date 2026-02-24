@@ -28,7 +28,7 @@ export interface LoginInput {
 
 export type SourceType = 'git' | 'zip';
 
-export type GitProvider = 'github' | 'gitlab' | 'other';
+export type GitProvider = 'github' | 'other';
 
 export interface EnvironmentVariable {
   key: string;

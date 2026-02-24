@@ -33,7 +33,7 @@ const ProjectSchema = new Schema(
     sourceType: { type: String, required: true, enum: ['git', 'zip'] },
     gitUrl: { type: String },
     gitBranch: { type: String, default: 'main' },
-    gitProvider: { type: String, enum: ['github', 'gitlab', 'other'] },
+    gitProvider: { type: String, enum: ['github', 'other'] },
     gitToken: { type: String },
     zipFileName: { type: String },
     installCommand: { type: String, default: 'npm install' },

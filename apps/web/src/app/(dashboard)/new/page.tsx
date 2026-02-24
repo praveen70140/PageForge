@@ -377,7 +377,6 @@ export default function NewProjectPage() {
                       onChange={(e) => updateField('gitProvider', (e.target as HTMLSelectElement).value as GitProvider)}
                       options={[
                         { value: 'github', label: 'GitHub' },
-                        { value: 'gitlab', label: 'GitLab' },
                         { value: 'other', label: 'Other (self-hosted)' },
                       ]}
                     />
@@ -441,8 +440,6 @@ export default function NewProjectPage() {
                         placeholder={
                           form.gitProvider === 'github'
                             ? 'ghp_xxxxxxxxxxxxxxxxxxxx'
-                            : form.gitProvider === 'gitlab'
-                            ? 'glpat-xxxxxxxxxxxxxxxxxxxx'
                             : 'your-access-token'
                         }
                         type="password"
@@ -454,8 +451,6 @@ export default function NewProjectPage() {
                           ? 'A project-level PAT overrides your GitHub OAuth token for this project only.'
                           : form.gitProvider === 'github'
                           ? 'Create a fine-grained token at GitHub > Settings > Developer Settings > Personal access tokens.'
-                          : form.gitProvider === 'gitlab'
-                          ? 'Create a project or personal access token at GitLab > Settings > Access Tokens with "read_repository" scope.'
                           : 'Provide a personal access token with repository read access.'}
                         {' '}Leave blank for public repos.
                       </p>

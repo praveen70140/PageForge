@@ -37,7 +37,7 @@ const ProjectSchema = new Schema<ProjectDocument>(
     sourceType: { type: String, required: true, enum: ['git', 'zip'] as SourceType[] },
     gitUrl: { type: String },
     gitBranch: { type: String, default: 'main' },
-    gitProvider: { type: String, enum: ['github', 'gitlab', 'other'] as GitProvider[] },
+    gitProvider: { type: String, enum: ['github', 'other'] as GitProvider[] },
     gitToken: { type: String, select: false }, // Never included in queries by default
     zipFileName: { type: String },
     installCommand: { type: String, default: 'npm install' },
