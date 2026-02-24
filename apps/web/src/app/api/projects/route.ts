@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDatabase } from '@/lib/db';
 import { ProjectModel } from '@/lib/models';
+import { requireAuth } from '@/lib/api-utils';
 import { generateSlug } from '@pageforge/shared';
 import type { CreateProjectInput } from '@pageforge/shared';
 
-// GET /api/projects — List all projects
+// GET /api/projects — List all projects for the authenticated user
 export async function GET() {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
-    const projects = await ProjectModel.find().sort({ createdAt: -1 }).lean();
+    const projects = await ProjectModel.find({ userId: authResult.userId })
+      .sort({ createdAt: -1 })
+      .lean();
     return NextResponse.json(projects);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to fetch projects';
@@ -19,6 +25,9 @@ export async function GET() {
 // POST /api/projects — Create a new project
 export async function POST(req: NextRequest) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const body = (await req.json()) as CreateProjectInput;
 
@@ -44,6 +53,7 @@ export async function POST(req: NextRequest) {
     }
 
     const project = await ProjectModel.create({
+      userId: authResult.userId,
       name: body.name,
       slug,
       sourceType: body.sourceType,

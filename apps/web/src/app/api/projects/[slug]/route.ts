@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDatabase } from '@/lib/db';
 import { ProjectModel } from '@/lib/models';
+import { requireAuth } from '@/lib/api-utils';
 import type { UpdateProjectInput } from '@pageforge/shared';
 
 interface RouteContext {
@@ -10,9 +11,12 @@ interface RouteContext {
 // GET /api/projects/[slug]
 export async function GET(_req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
-    const project = await ProjectModel.findOne({ slug }).lean();
+    const project = await ProjectModel.findOne({ slug, userId: authResult.userId }).lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -28,12 +32,15 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 // PATCH /api/projects/[slug]
 export async function PATCH(req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
     const body = (await req.json()) as UpdateProjectInput;
 
     const project = await ProjectModel.findOneAndUpdate(
-      { slug },
+      { slug, userId: authResult.userId },
       { $set: body },
       { new: true, runValidators: true }
     ).lean();
@@ -52,9 +59,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
 // DELETE /api/projects/[slug]
 export async function DELETE(_req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
-    const project = await ProjectModel.findOneAndDelete({ slug });
+    const project = await ProjectModel.findOneAndDelete({ slug, userId: authResult.userId });
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });

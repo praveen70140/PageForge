@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDatabase } from '@/lib/db';
 import { ProjectModel } from '@/lib/models';
+import { requireAuth } from '@/lib/api-utils';
 import type { SetEnvVarsInput } from '@pageforge/shared';
 
 interface RouteContext {
@@ -10,9 +11,12 @@ interface RouteContext {
 // GET /api/projects/[slug]/env — Get environment variables
 export async function GET(_req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
-    const project = await ProjectModel.findOne({ slug })
+    const project = await ProjectModel.findOne({ slug, userId: authResult.userId })
       .select('environmentVariables')
       .lean();
 
@@ -37,6 +41,9 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 // PUT /api/projects/[slug]/env — Replace all environment variables
 export async function PUT(req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
     const body = (await req.json()) as SetEnvVarsInput;
@@ -59,7 +66,7 @@ export async function PUT(req: NextRequest, ctx: RouteContext) {
     }
 
     const project = await ProjectModel.findOneAndUpdate(
-      { slug },
+      { slug, userId: authResult.userId },
       { $set: { environmentVariables: body.variables } },
       { new: true }
     ).lean();

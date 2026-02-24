@@ -3,9 +3,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useSession, signOut } from 'next-auth/react';
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
 
   const navItems = [
     {
@@ -18,6 +20,10 @@ export function Sidebar() {
       ),
     },
   ];
+
+  const handleSignOut = () => {
+    signOut({ callbackUrl: '/login' });
+  };
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-64 flex-col border-r border-zinc-800 bg-zinc-950">
@@ -57,11 +63,40 @@ export function Sidebar() {
         </ul>
       </nav>
 
-      {/* Footer */}
+      {/* User section */}
       <div className="border-t border-zinc-800 p-4">
-        <div className="text-xs text-zinc-600">
-          PageForge v0.1.0
-        </div>
+        {session?.user ? (
+          <div className="flex items-center justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-medium text-zinc-300">
+                  {session.user.name?.charAt(0).toUpperCase() || 'U'}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-zinc-200">
+                    {session.user.name}
+                  </p>
+                  <p className="truncate text-xs text-zinc-500">
+                    {session.user.email}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="ml-2 shrink-0 rounded-lg p-1.5 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 transition-colors"
+              title="Sign out"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+              </svg>
+            </button>
+          </div>
+        ) : (
+          <div className="text-xs text-zinc-600">
+            PageForge v0.1.0
+          </div>
+        )}
       </div>
     </aside>
   );

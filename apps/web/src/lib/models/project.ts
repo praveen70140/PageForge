@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model } from 'mongoose';
+import mongoose, { Schema, Document, Model, Types } from 'mongoose';
 import type { Project, SourceType, EnvironmentVariable, DomainEntry } from '@pageforge/shared';
 
 // ─── Sub-schemas ─────────────────────────────────────────────────
@@ -24,10 +24,13 @@ const DomainEntrySchema = new Schema<DomainEntry>(
 
 // ─── Project Schema ──────────────────────────────────────────────
 
-export interface ProjectDocument extends Omit<Project, '_id'>, Document {}
+export interface ProjectDocument extends Omit<Project, '_id' | 'userId'>, Document {
+  userId: Types.ObjectId;
+}
 
 const ProjectSchema = new Schema<ProjectDocument>(
   {
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true } as unknown as typeof Schema.Types.ObjectId,
     name: { type: String, required: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true },
     sourceType: { type: String, required: true, enum: ['git', 'zip'] as SourceType[] },

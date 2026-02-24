@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDatabase } from '@/lib/db';
 import { ProjectModel } from '@/lib/models';
+import { requireAuth } from '@/lib/api-utils';
 import { ensureBucket, uploadFile } from '@/lib/minio';
 import { zipStoragePath } from '@pageforge/shared';
 
@@ -10,9 +11,12 @@ export async function POST(
   ctx: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
-    const project = await ProjectModel.findOne({ slug });
+    const project = await ProjectModel.findOne({ slug, userId: authResult.userId });
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });

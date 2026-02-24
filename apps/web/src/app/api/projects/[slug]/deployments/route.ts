@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDatabase } from '@/lib/db';
 import { ProjectModel, DeploymentModel } from '@/lib/models';
+import { requireAuth } from '@/lib/api-utils';
 import { enqueueBuild } from '@/lib/queue';
 import type { TriggerDeploymentInput } from '@pageforge/shared';
 
@@ -11,9 +12,12 @@ interface RouteContext {
 // GET /api/projects/[slug]/deployments — List deployments for a project
 export async function GET(_req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
-    const project = await ProjectModel.findOne({ slug }).lean();
+    const project = await ProjectModel.findOne({ slug, userId: authResult.userId }).lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
@@ -33,9 +37,12 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 // POST /api/projects/[slug]/deployments — Trigger a new deployment
 export async function POST(req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
-    const project = await ProjectModel.findOne({ slug }).lean();
+    const project = await ProjectModel.findOne({ slug, userId: authResult.userId }).lean();
 
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });

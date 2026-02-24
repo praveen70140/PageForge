@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDatabase } from '@/lib/db';
 import { ProjectModel } from '@/lib/models';
-import { getCnameTarget, verifyCname } from '@/lib/dns';
-import { upsertRoute } from '@/lib/caddy';
-import { DeploymentModel } from '@/lib/models';
+import { requireAuth } from '@/lib/api-utils';
+import { getCnameTarget } from '@/lib/dns';
 import type { AddDomainInput } from '@pageforge/shared';
 
 interface RouteContext {
@@ -13,9 +12,12 @@ interface RouteContext {
 // GET /api/projects/[slug]/domains — List domains
 export async function GET(_req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
-    const project = await ProjectModel.findOne({ slug })
+    const project = await ProjectModel.findOne({ slug, userId: authResult.userId })
       .select('domains slug')
       .lean();
 
@@ -33,6 +35,9 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 // POST /api/projects/[slug]/domains — Add a domain
 export async function POST(req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug } = await ctx.params;
     const body = (await req.json()) as AddDomainInput;
@@ -47,7 +52,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
     const domain = body.domain.toLowerCase().trim();
     const cnameTarget = getCnameTarget(slug);
 
-    const project = await ProjectModel.findOne({ slug });
+    const project = await ProjectModel.findOne({ slug, userId: authResult.userId });
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }

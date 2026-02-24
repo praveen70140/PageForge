@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDatabase } from '@/lib/db';
 import { ProjectModel, DeploymentModel } from '@/lib/models';
+import { requireAuth } from '@/lib/api-utils';
 import { verifyCname } from '@/lib/dns';
 import { upsertRoute } from '@/lib/caddy';
 
@@ -11,11 +12,14 @@ interface RouteContext {
 // POST /api/projects/[slug]/domains/[domain] — Verify a domain
 export async function POST(_req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug, domain: rawDomain } = await ctx.params;
     const domain = decodeURIComponent(rawDomain).toLowerCase();
 
-    const project = await ProjectModel.findOne({ slug });
+    const project = await ProjectModel.findOne({ slug, userId: authResult.userId });
     if (!project) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
@@ -72,12 +76,15 @@ export async function POST(_req: NextRequest, ctx: RouteContext) {
 // DELETE /api/projects/[slug]/domains/[domain] — Remove a domain
 export async function DELETE(_req: NextRequest, ctx: RouteContext) {
   try {
+    const authResult = await requireAuth();
+    if (authResult.error) return authResult.error;
+
     await connectDatabase();
     const { slug, domain: rawDomain } = await ctx.params;
     const domain = decodeURIComponent(rawDomain).toLowerCase();
 
     const project = await ProjectModel.findOneAndUpdate(
-      { slug },
+      { slug, userId: authResult.userId },
       { $pull: { domains: { domain } } },
       { new: true }
     );
