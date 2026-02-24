@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useFetch, useMutation } from '@/hooks/use-fetch';
@@ -84,7 +84,23 @@ function OverviewTab({ project, onDeploy, deployLoading }: {
         <Card>
           <div className="text-sm text-zinc-500">Source</div>
           <div className="mt-1 text-sm text-zinc-300 truncate">
-            {project.sourceType === 'git' ? project.gitUrl : project.zipFileName || 'No file uploaded'}
+            {project.sourceType === 'git' ? (
+              <span className="flex items-center gap-1.5">
+                {project.gitProvider === 'github' && (
+                  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+                  </svg>
+                )}
+                {project.gitProvider === 'gitlab' && (
+                  <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M22.65 14.39L12 22.13.35 14.39a.84.84 0 01-.3-.94l1.22-3.78 2.44-7.51A.42.42 0 014.82 2a.43.43 0 01.58 0 .42.42 0 01.11.18l2.44 7.49h8.1l2.44-7.51A.42.42 0 0118.6 2a.43.43 0 01.58 0 .42.42 0 01.11.18l2.44 7.51L23 13.45a.84.84 0 01-.35.94z" />
+                  </svg>
+                )}
+                <span className="truncate">{project.gitUrl}</span>
+              </span>
+            ) : (
+              project.zipFileName || 'No file uploaded'
+            )}
           </div>
         </Card>
       </div>
@@ -459,6 +475,29 @@ function SettingsTab({ project }: { project: Project }) {
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Git credentials state
+  const [gitToken, setGitToken] = useState('');
+  const [savingToken, setSavingToken] = useState(false);
+  const [removingToken, setRemovingToken] = useState(false);
+  const [tokenSaved, setTokenSaved] = useState(false);
+  const [githubStatus, setGithubStatus] = useState<{ connected: boolean; githubUsername: string | null } | null>(null);
+
+  // Fetch GitHub connection status
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('/api/auth/github/status');
+        if (res.ok) {
+          const data = (await res.json()) as { connected: boolean; githubUsername: string | null };
+          setGithubStatus(data);
+        }
+      } catch {
+        // Non-critical
+      }
+    };
+    fetchStatus();
+  }, []);
+
   const saveSettings = async () => {
     setSaving(true);
     try {
@@ -475,6 +514,48 @@ function SettingsTab({ project }: { project: Project }) {
       console.error('Failed to save settings:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const saveToken = async () => {
+    if (!gitToken.trim()) return;
+    setSavingToken(true);
+    try {
+      const res = await fetch(`/api/projects/${project.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gitToken }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as ApiError;
+        throw new Error(data.error);
+      }
+      setGitToken('');
+      setTokenSaved(true);
+      setTimeout(() => setTokenSaved(false), 3000);
+    } catch (err) {
+      console.error('Failed to save token:', err);
+    } finally {
+      setSavingToken(false);
+    }
+  };
+
+  const removeToken = async () => {
+    setRemovingToken(true);
+    try {
+      const res = await fetch(`/api/projects/${project.slug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ removeGitToken: true }),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as ApiError;
+        throw new Error(data.error);
+      }
+    } catch (err) {
+      console.error('Failed to remove token:', err);
+    } finally {
+      setRemovingToken(false);
     }
   };
 
@@ -544,6 +625,88 @@ function SettingsTab({ project }: { project: Project }) {
           </Button>
         </div>
       </Card>
+
+      {/* Git Credentials — only for git projects */}
+      {project.sourceType === 'git' && (
+        <Card>
+          <h3 className="text-base font-medium text-zinc-100 mb-4">Git Credentials</h3>
+
+          {/* GitHub OAuth status */}
+          {githubStatus?.connected && (
+            <div className="mb-4 flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 px-3 py-2">
+              <svg className="h-4 w-4 text-green-400 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm text-green-400">
+                GitHub connected as <strong>{githubStatus.githubUsername}</strong> — used automatically for deployments.
+              </span>
+            </div>
+          )}
+
+          {!githubStatus?.connected && !project.hasGitToken && (
+            <div className="mb-4 rounded-lg bg-zinc-800/50 border border-zinc-700 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-zinc-300">No credentials configured</p>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    Connect GitHub in <a href="/settings" className="text-blue-400 hover:text-blue-300 transition-colors">Settings</a> or add a PAT below.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Per-project PAT override */}
+          <div className="space-y-3">
+            <div className="text-sm text-zinc-400">
+              {project.hasGitToken ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <svg className="h-4 w-4 text-yellow-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+                    </svg>
+                    <span>Project-level access token is set</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={removeToken}
+                    loading={removingToken}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-xs text-zinc-500">
+                  Optionally set a project-specific token. This overrides your GitHub OAuth connection for this project.
+                </p>
+              )}
+            </div>
+
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <Input
+                  placeholder={project.hasGitToken ? 'Replace existing token...' : 'ghp_xxxxxxxxxxxxxxxxxxxx'}
+                  type="password"
+                  value={gitToken}
+                  onChange={(e) => {
+                    setGitToken((e.target as HTMLInputElement).value);
+                    setTokenSaved(false);
+                  }}
+                />
+              </div>
+              <Button
+                size="md"
+                onClick={saveToken}
+                loading={savingToken}
+                disabled={!gitToken.trim()}
+              >
+                {tokenSaved ? 'Saved' : 'Save Token'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* ZIP Upload for zip projects */}
       {project.sourceType === 'zip' && (

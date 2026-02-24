@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDatabase } from '@/lib/db';
-import { ProjectModel, DeploymentModel } from '@/lib/models';
+import { ProjectModel, DeploymentModel, UserModel } from '@/lib/models';
 import { requireAuth } from '@/lib/api-utils';
 import { enqueueBuild } from '@/lib/queue';
 import type { TriggerDeploymentInput } from '@pageforge/shared';
@@ -68,6 +68,17 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
       );
     }
 
+    // Determine the git token to use:
+    // 1. Project-level PAT (gitToken on the project) takes priority
+    // 2. Fall back to user's GitHub OAuth token if the project uses GitHub
+    let gitToken = project.gitToken || undefined;
+    if (!gitToken && project.sourceType === 'git') {
+      const user = await UserModel.findById(authResult.userId).select('+githubAccessToken');
+      if (user?.githubAccessToken) {
+        gitToken = user.githubAccessToken;
+      }
+    }
+
     // Create deployment record
     const deployment = await DeploymentModel.create({
       projectId: project._id,
@@ -78,7 +89,7 @@ export async function POST(req: NextRequest, ctx: RouteContext) {
         type: project.sourceType,
         gitUrl: project.gitUrl,
         gitBranch: project.gitBranch,
-        gitToken: project.gitToken || undefined,
+        gitToken: gitToken,
         zipPath: project.zipFileName
           ? `uploads/${project.slug}/${project.zipFileName}`
           : undefined,

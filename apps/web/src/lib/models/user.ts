@@ -6,6 +6,11 @@ export interface UserDocument extends Document {
   name: string;
   email: string;
   passwordHash: string;
+  // GitHub OAuth
+  githubAccessToken?: string;
+  githubId?: number;
+  githubUsername?: string;
+  githubConnectedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,9 +26,30 @@ const UserSchema = new Schema<UserDocument>(
       trim: true,
     },
     passwordHash: { type: String, required: true },
+    // GitHub OAuth — token is select:false so it's never returned by default
+    githubAccessToken: { type: String, select: false },
+    githubId: { type: Number },
+    githubUsername: { type: String },
+    githubConnectedAt: { type: Date },
   },
   {
     timestamps: true,
+    toJSON: {
+      transform(_doc, ret: Record<string, unknown>) {
+        delete ret.passwordHash;
+        delete ret.githubAccessToken;
+        ret.hasGithubToken = !!_doc.githubAccessToken || !!_doc.githubConnectedAt;
+        return ret;
+      },
+    },
+    toObject: {
+      transform(_doc, ret: Record<string, unknown>) {
+        delete ret.passwordHash;
+        delete ret.githubAccessToken;
+        ret.hasGithubToken = !!_doc.githubAccessToken || !!_doc.githubConnectedAt;
+        return ret;
+      },
+    },
   }
 );
 

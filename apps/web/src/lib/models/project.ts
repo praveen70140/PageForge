@@ -26,6 +26,7 @@ const DomainEntrySchema = new Schema<DomainEntry>(
 
 export interface ProjectDocument extends Omit<Project, '_id' | 'userId'>, Document {
   userId: Types.ObjectId;
+  gitToken?: string; // select: false — only available when explicitly selected with .select('+gitToken')
 }
 
 const ProjectSchema = new Schema<ProjectDocument>(

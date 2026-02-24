@@ -8,6 +8,10 @@ import type { NextAuthConfig } from 'next-auth';
 export const authConfig: NextAuthConfig = {
   providers: [], // Providers are added in the full auth.ts
 
+  // Trust the reverse proxy (Cloudflare Tunnel / Caddy) X-Forwarded-* headers
+  // Without this, NextAuth constructs redirect URLs using localhost:3000
+  trustHost: true,
+
   session: {
     strategy: 'jwt',
     maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -44,7 +48,7 @@ export const authConfig: NextAuthConfig = {
       if (isPublicPath || isAuthApi) {
         // Redirect authenticated users away from login/register
         if (session?.user && isPublicPath) {
-          return Response.redirect(new URL('/', request.nextUrl.origin));
+          return Response.redirect(new URL('/', request.url));
         }
         return true;
       }
