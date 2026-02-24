@@ -138,7 +138,7 @@ PageForge is a self-hosted alternative to platforms like Vercel and Netlify, foc
     \item Dockerized build pipelines with configurable build commands, resource limits, and security isolation.
     \item Automatic static site serving via Caddy reverse proxy with dynamic route management.
     \item S3-compatible artifact storage via MinIO.
-    \item Multi-user authentication with email/password credentials and email OTP login.
+    \item Multi-user authentication with email/password credentials, OTP-based email verification during registration, and OTP-based password reset.
     \item Real-time build log streaming via WebSocket and Redis Pub/Sub.
 \end{itemize}
 
@@ -152,8 +152,8 @@ The platform is designed for individual developers or small teams who want full 
     \item BullMQ Documentation: \url{https://docs.bullmq.io/}
     \item Docker Engine API: \url{https://docs.docker.com/engine/api/}
     \item Caddy Server Admin API: \url{https://caddyserver.com/docs/api}
-    \item MinIO JavaScript Client: \url{https://min.io/docs/minio/linux/developers/javascript/minio-javascript.html}
-    \item GitHub OAuth Documentation: \url{https://docs.github.com/en/apps/oauth-apps}
+    \item MinIO JavaScript Client: \href{https://min.io/docs/minio/linux/developers/javascript/minio-javascript.html}{\texttt{min.io/docs/.../minio\allowbreak{}-javascript.html}}
+    \item GitHub OAuth Documentation:\newline \url{https://docs.github.com/en/apps/oauth-apps}
     \item Roger S. Pressman, \textit{Software Engineering: A Practitioner's Approach}, Appendix A.
     \item IEEE Std 830-1998, \textit{IEEE Recommended Practice for Software Requirements Specifications}.
 \end{enumerate}
@@ -186,7 +186,7 @@ The system consists of four major subsystems:
 \subsection{Product Functions}
 The major functions of PageForge are:
 \begin{itemize}
-    \item \textbf{User Authentication:} Registration, login (email/password and OTP), session management, logout.
+    \item \textbf{User Authentication:} Registration with email OTP verification, login (email/password), forgot password via OTP, session management, logout.
     \item \textbf{GitHub OAuth Integration:} Connect/disconnect GitHub account, import private repositories.
     \item \textbf{Project Management:} Create, read, update, delete projects with Git or ZIP sources.
     \item \textbf{Deployment Pipeline:} Trigger builds, execute in Docker containers, stream logs, store artifacts.
@@ -222,7 +222,6 @@ The major functions of PageForge are:
     \item \textbf{TypeScript Only:} All code must be written in TypeScript with strict type checking.
     \item \textbf{Edge Runtime Compatibility:} Middleware must not import Node.js-only modules (Mongoose, bcrypt) due to Next.js Edge Runtime restrictions.
     \item \textbf{Docker Dependency:} Build execution requires Docker Engine access via socket (\texttt{/var/run/docker.sock}).
-    \item \textbf{Single Server:} Designed for single-server deployment; no horizontal scaling or clustering support.
     \item \textbf{Static Sites Only:} Only static site output (HTML/CSS/JS) is supported; no server-side rendering or serverless functions in deployed sites.
     \item \textbf{GitHub OAuth Scope:} The \texttt{repo} scope grants read and write access; GitHub does not offer a read-only scope for private repositories via OAuth Apps.
 \end{itemize}
@@ -254,14 +253,16 @@ The major functions of PageForge are:
 
 \subsection{User Registration}
 \subsubsection{Description and Priority}
-Allows new users to create an account with name, email, and password. \textbf{Priority: High.}
+Allows new users to create an account with name, email, and password. Email address is verified via OTP before account creation (see Section 3.3). \textbf{Priority: High.}
 
 \subsubsection{Stimulus/Response Sequences}
 \begin{enumerate}
     \item User navigates to \texttt{/register}.
     \item User enters name, email, and password.
     \item System validates input and checks email uniqueness.
-    \item System creates user account with hashed password.
+    \item System sends a 6-digit OTP to the provided email.
+    \item User enters the OTP on the verification screen.
+    \item System verifies OTP and creates user account with hashed password.
     \item System redirects to login page.
 \end{enumerate}
 
@@ -271,8 +272,8 @@ Allows new users to create an account with name, email, and password. \textbf{Pr
     \item[FR-02] The system shall validate that all fields are non-empty and email is in valid format.
     \item[FR-03] The system shall reject registration if the email is already registered (HTTP 409).
     \item[FR-04] The system shall hash passwords using bcrypt with 12 salt rounds before storage.
-    \item[FR-05] The system shall store the user in MongoDB with \texttt{createdAt} and \texttt{updatedAt} timestamps.
-    \item[FR-06] The system shall return HTTP 201 on successful registration.
+    \item[FR-05] The system shall require email OTP verification before finalizing account creation (see Section 3.3).
+    \item[FR-06] The system shall store the user in MongoDB with \texttt{createdAt} and \texttt{updatedAt} timestamps only after successful OTP verification, and return HTTP 201.
     \item[FR-07] The system shall redirect authenticated users away from the registration page to the dashboard.
 \end{description}
 
@@ -300,29 +301,30 @@ Allows registered users to authenticate with email and password. \textbf{Priorit
     \item[FR-14] The system shall redirect authenticated users away from the login page.
 \end{description}
 
-\subsection{User Login (Email OTP)}
+\subsection{Email OTP Verification (Registration)}
 \subsubsection{Description and Priority}
-Allows users to authenticate via a one-time password sent to their email. \textbf{Priority: Medium.}
+Verifies a user's email address during registration by sending a one-time password (OTP) to the provided email. The user must enter the correct OTP to complete account creation. This ensures only valid, accessible email addresses are registered. \textbf{Priority: High.}
 
 \subsubsection{Stimulus/Response Sequences}
 \begin{enumerate}
-    \item User navigates to \texttt{/login} and selects ``Login with OTP''.
-    \item User enters email address.
-    \item System sends 6-digit OTP to the email.
-    \item User enters OTP code.
-    \item System verifies OTP and issues JWT session.
+    \item User fills in the registration form (name, email, password) and submits.
+    \item System validates input and checks email uniqueness.
+    \item System generates a 6-digit OTP and sends it to the provided email.
+    \item User enters the OTP on the verification screen.
+    \item System verifies the OTP.
+    \item On success, the system creates the user account and redirects to login.
 \end{enumerate}
 
 \subsubsection{Functional Requirements}
 \begin{description}
-    \item[FR-15] The system shall provide an OTP login option on the login page.
+    \item[FR-15] The system shall send a 6-digit OTP to the user's email after initial registration form submission, before creating the account.
     \item[FR-16] The system shall generate a cryptographically random 6-digit OTP.
-    \item[FR-17] The system shall send the OTP to the user's registered email address.
+    \item[FR-17] The system shall store the pending registration data and OTP temporarily until verification completes or expires.
     \item[FR-18] The system shall expire OTPs after 5 minutes.
     \item[FR-19] The system shall invalidate an OTP after successful verification (single-use).
     \item[FR-20] The system shall reject expired or invalid OTPs with an appropriate error message.
-    \item[FR-21] The system shall issue a JWT session token upon successful OTP verification.
-    \item[FR-22] The system shall return HTTP 404 if the email is not registered.
+    \item[FR-21] The system shall create the user account only after successful OTP verification.
+    \item[FR-22] The system shall allow the user to request a new OTP if the previous one expired.
 \end{description}
 
 \subsection{GitHub OAuth Connection}
@@ -411,11 +413,11 @@ Executes builds in isolated Docker containers and serves the resulting static as
     \item[FR-54] The worker shall clone the Git repository (or extract ZIP) and execute build commands.
     \item[FR-55] The worker shall parse Docker multiplexed stream format (8-byte header) for stdout/stderr separation.
     \item[FR-56] The worker shall sanitize all secrets from build log output.
-    \item[FR-57] The worker shall publish log entries to Redis Pub/Sub channel \texttt{build-logs:\{deploymentId\}}.
+    \item[FR-57] The worker shall publish log entries to Redis Pub/Sub channel \texttt{build\allowbreak{}-logs:\allowbreak{}\{deploymentId\}}.
     \item[FR-58] The worker shall persist log entries to the deployment's \texttt{buildLogs} array in MongoDB.
     \item[FR-59] The worker shall extract the build output directory as a tar archive from the container.
-    \item[FR-60] The worker shall upload extracted artifacts to MinIO at \texttt{artifacts/\{deploymentId\}/}.
-    \item[FR-61] The worker shall configure a Caddy route mapping \texttt{\{slug\}.\{domain\}} to the MinIO artifact path.
+    \item[FR-60] The worker shall upload the extracted build artifacts to MinIO under the path \texttt{artifacts/\allowbreak{}\{deploymentId\}/}.
+    \item[FR-61] The worker shall configure a Caddy route mapping \texttt{\{slug\}.\allowbreak{}\{domain\}} to the MinIO artifact path.
     \item[FR-62] The worker shall update deployment status through the lifecycle: \texttt{queued} $\rightarrow$ \texttt{building} $\rightarrow$ \texttt{uploading} $\rightarrow$ \texttt{ready} (or \texttt{failed}).
     \item[FR-63] The worker shall remove the Docker container after build completion (success or failure).
     \item[FR-64] The system shall list deployments for a project sorted by creation date (newest first).
@@ -494,7 +496,7 @@ Provides real-time build log streaming during deployments. \textbf{Priority: Med
 \subsubsection{Stimulus/Response Sequences}
 \begin{enumerate}
     \item User navigates to a deployment detail page.
-    \item System establishes WebSocket connection to \texttt{ws://\allowbreak{}\{host\}/\allowbreak{}ws/\allowbreak{}logs/\allowbreak{}\{deploymentId\}}.
+    \item System establishes WebSocket connection to\\ \texttt{ws://\allowbreak{}\{host\}/\allowbreak{}ws/\allowbreak{}logs/\allowbreak{}\{deploymentId\}}.
     \item Build logs are streamed in real-time from Redis Pub/Sub.
     \item After build completes, historical logs are available from MongoDB.
 \end{enumerate}
@@ -508,6 +510,36 @@ Provides real-time build log streaming during deployments. \textbf{Priority: Med
     \item[FR-86] The system shall display logs with visual distinction between stdout, stderr, and system messages.
     \item[FR-87] The system shall auto-scroll to the latest log entry.
     \item[FR-88] The system shall display deployment status (queued, building, uploading, ready, failed) with colored badges.
+\end{description}
+
+\subsection{Forgot Password (OTP-Based Password Reset)}
+\subsubsection{Description and Priority}
+Allows users to reset their password by verifying their identity via a one-time password sent to their registered email address. \textbf{Priority: High.}
+
+\subsubsection{Stimulus/Response Sequences}
+\begin{enumerate}
+    \item User clicks ``Forgot Password'' on the login page.
+    \item User enters their registered email address.
+    \item System sends a 6-digit OTP to the email.
+    \item User enters the OTP on the verification screen.
+    \item System verifies the OTP and presents the password reset form.
+    \item User enters and confirms a new password.
+    \item System hashes the new password and updates the user record.
+    \item System redirects to the login page with a success message.
+\end{enumerate}
+
+\subsubsection{Functional Requirements}
+\begin{description}
+    \item[FR-89] The system shall provide a ``Forgot Password'' link on the login page navigating to \texttt{/forgot-password}.
+    \item[FR-90] The system shall accept an email address and send a 6-digit OTP to it if the email is registered.
+    \item[FR-91] The system shall not reveal whether an email is registered or not (to prevent user enumeration).
+    \item[FR-92] The system shall generate a cryptographically random 6-digit OTP with a 5-minute expiry.
+    \item[FR-93] The system shall invalidate the OTP after successful verification (single-use).
+    \item[FR-94] The system shall present a new password form only after successful OTP verification.
+    \item[FR-95] The system shall validate that the new password meets minimum requirements.
+    \item[FR-96] The system shall hash the new password using bcrypt with 12 salt rounds and update the user record.
+    \item[FR-97] The system shall invalidate all existing sessions for the user after a password reset.
+    \item[FR-98] The system shall redirect to the login page after successful password reset.
 \end{description}
 
 \newpage
@@ -568,9 +600,11 @@ POST & /api/auth/register & User registration \\
 \hline
 GET/POST & /api/auth/[...nextauth] & NextAuth.js session management \\
 \hline
-POST & /api/auth/otp/send & Send OTP to email \\
+POST & /api/auth/otp/send & Send OTP (registration or password reset) \\
 \hline
-POST & /api/auth/otp/verify & Verify OTP and issue session \\
+POST & /api/auth/otp/verify & Verify OTP code \\
+\hline
+POST & /api/auth/forgot-password & Reset password after OTP verification \\
 \hline
 GET & /api/auth/github & Initiate GitHub OAuth flow \\
 \hline
@@ -621,7 +655,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \item \textbf{EnvironmentVariable}, \textbf{DomainEntry}, \textbf{SourceSnapshot}, \textbf{BuildConfig}, and \textbf{LogEntry} are embedded documents (not separate collections) for performance and atomicity.
     \item \textbf{Sensitive fields} (\texttt{passwordHash}, \texttt{githubAccessToken}, \texttt{gitToken}) use Mongoose \texttt{select: false} and are stripped in \texttt{toJSON}/\texttt{toObject} transforms.
     \item \textbf{BuildWorker} delegates to \textbf{Executor} (Docker), \textbf{ArtifactManager} (MinIO), and \textbf{BuildLogger} (Redis) following the single-responsibility principle.
-    \item \textbf{OTPService} manages OTP generation, verification, and email delivery for passwordless login.
+    \item \textbf{OTPService} manages OTP generation, verification, and email delivery for registration email verification and password reset.
 \end{itemize}
 
 \subsubsection{Sequence Diagrams}
@@ -642,11 +676,11 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_login}
 \end{figure}
 
-\paragraph{SD-03: User Login (Email OTP)}
+\paragraph{SD-03: Email OTP Verification (Registration \& Password Reset)}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_otp_login.pdf}
-    \caption{Sequence Diagram: Email OTP Login (D-SQ-03)}
+    \caption{Sequence Diagram: Email OTP Verification (D-SQ-03)}
     \label{fig:seq_otp}
 \end{figure}
 
@@ -863,12 +897,13 @@ createdAt & Date & auto, indexed & Creation timestamp \\
         \item Tokens contain user ID, name, and email (no sensitive data).
     \end{itemize}
 
-    \item \textbf{OTP-Based Authentication:}
+    \item \textbf{OTP-Based Verification:}
     \begin{itemize}
         \item 6-digit cryptographically random OTP generated per request.
         \item OTPs expire after 5 minutes.
         \item Single-use: invalidated immediately after successful verification.
         \item Delivered via email to the registered address.
+        \item Used for two purposes: (1) email verification during registration, (2) identity verification during password reset.
     \end{itemize}
 
     \item \textbf{JWT Session Management:}
@@ -1026,7 +1061,7 @@ UC-01 & User Registration & D-CL-01, D-SQ-01, D-DB-01 & Class Diagram, Sequence 
 \hline
 UC-02 & User Login (Credentials) & D-CL-01, D-SQ-02, D-SEC-01 & Class Diagram, Sequence Diagram, Security Design \\
 \hline
-UC-03 & User Login (Email OTP) & D-CL-01, D-SQ-03, D-SEC-01 & Class Diagram, Sequence Diagram, Security Design \\
+UC-03 & Email OTP Verification & D-CL-01, D-SQ-03, D-SEC-01 & Class Diagram, Sequence Diagram, Security Design \\
 \hline
 UC-04 & GitHub OAuth Connection & D-CL-01, D-SQ-06, D-DB-01, D-SEC-02 & Class Diagram, Sequence Diagram, Database Schema, Security Design \\
 \hline
@@ -1042,11 +1077,13 @@ UC-09 & ZIP File Upload & D-CL-01, D-SQ-08, D-DB-01 & Class Diagram, Sequence Di
 \hline
 UC-10 & Build Log Viewer & D-CL-01, D-SQ-05, D-SQ-10 & Class Diagram, Sequence Diagrams \\
 \hline
+UC-11 & Forgot Password & D-CL-01, D-SQ-03, D-SEC-01 & Class Diagram, Sequence Diagram, Security Design \\
+\hline
 FR-01 to FR-07 & Registration Reqs & D-SQ-01, D-DB-01 & Sequence Diagram, Database Schema \\
 \hline
 FR-08 to FR-14 & Login (Credentials) & D-SQ-02, D-SEC-01 & Sequence Diagram, Security Design \\
 \hline
-FR-15 to FR-22 & Login (OTP) Reqs & D-SQ-03, D-SEC-01 & Sequence Diagram, Security Design \\
+FR-15 to FR-22 & Email OTP Verification Reqs & D-SQ-03, D-SEC-01 & Sequence Diagram, Security Design \\
 \hline
 FR-23 to FR-30 & GitHub OAuth Reqs & D-SQ-06, D-SEC-02 & Sequence Diagram, Security Design \\
 \hline
@@ -1061,6 +1098,8 @@ FR-71 to FR-77 & Domain Mgmt Reqs & D-SQ-07, D-DB-01 & Sequence Diagram, Databas
 FR-78 to FR-81 & ZIP Upload Reqs & D-SQ-08, D-DB-01 & Sequence Diagram, Database Schema \\
 \hline
 FR-82 to FR-88 & Log Viewer Reqs & D-SQ-05, D-SQ-10 & Sequence Diagrams \\
+\hline
+FR-89 to FR-98 & Forgot Password Reqs & D-SQ-03, D-SEC-01 & Sequence Diagram, Security Design \\
 \hline
 NFR-10 & Password Hashing & D-SEC-01 & Security Design \\
 \hline
