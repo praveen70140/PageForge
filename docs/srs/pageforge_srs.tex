@@ -36,23 +36,6 @@
 \fancyhead[R]{Version 1.0}
 \fancyfoot[C]{\thepage}
 
-\title{
-    \vspace{-1cm}
-    \textbf{Software Requirements Specification}\\
-    \textbf{and Design Document}\\[0.5cm]
-    \Large{for}\\[0.5cm]
-    \Huge{\textbf{PageForge}}\\[0.3cm]
-    \Large{Self-Hosted Static Site Deployment Platform}\\[1cm]
-    \large{Version 1.0 Approved}
-}
-
-\author{
-    \textbf{Prepared by:} Pageforge team\\
-    \textbf{Organization:} PageForge Project\\
-}
-
-\date{}
-
 % Prevent orphaned headings (headings at bottom of page with no content following)
 \raggedbottom
 \widowpenalty=10000
@@ -81,8 +64,45 @@
 
 \begin{document}
 
-\maketitle
-\thispagestyle{empty}
+% -------------------------------------------------------------------
+% TITLE PAGE
+% -------------------------------------------------------------------
+\begin{titlepage}
+    \centering
+    \vspace*{1cm}
+    
+    {\Huge \textbf{Software Requirements Specification and Design Document}}\\
+    \vspace{0.5cm}
+    {\Huge \textbf{for}}\\
+    \vspace{0.5cm}
+    {\Huge \textbf{PageForge}}\\
+    
+    \vspace{1.5cm}
+    {\Large \textbf{Version 2.0 Approved}}\\
+    \vspace{2cm}
+    
+    % Centered Submitted By Section
+    {\Large \textbf{Submitted by:}}\\
+    \vspace{0.5cm}
+    {\large Aaryan Gupta}\\
+    {\large Praveen Parakh}\\
+    {\large Ayush Kukreti}\\
+    {\large Abhishek Kumar}\\
+    {\large Shubham Kumar}\\
+    
+    \vspace{1.5cm}
+    
+    % Centered Submitted To Section
+    {\Large \textbf{Submitted to:}}\\
+    \vspace{0.5cm}
+    {\large Rekha R}\\
+    {\large Assistant Professor}\\
+    
+    \vspace{2cm}
+    
+    \vspace{1.5cm}
+\end{titlepage}
+
 \newpage
 
 % Revision History
@@ -704,7 +724,7 @@ The class diagram shows all major classes across the six modules: Authentication
 
 \subsubsection{Sequence Diagrams}
 
-\paragraph{SD-01: User Registration}
+\begin{center}\textbf{SD-01: User Registration}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_register.pdf}
@@ -712,7 +732,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_register}
 \end{figure}
 
-\paragraph{SD-02: User Login (Credentials)}
+\begin{center}\textbf{SD-02: User Login (Credentials)}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_login.pdf}
@@ -720,7 +740,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_login}
 \end{figure}
 
-\paragraph{SD-03: Email OTP Verification (Registration \& Password Reset)}
+\begin{center}\textbf{SD-03: Email OTP Verification (Registration \& Password Reset)}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_otp_login.pdf}
@@ -728,7 +748,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_otp}
 \end{figure}
 
-\paragraph{SD-04: Create New Project}
+\begin{center}\textbf{SD-04: Create New Project}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{diagrams/seq_create_project.pdf}
@@ -736,7 +756,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_create}
 \end{figure}
 
-\paragraph{SD-05: Trigger Deployment and Build Process}
+\begin{center}\textbf{SD-05: Trigger Deployment and Build Process}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{diagrams/seq_deploy.pdf}
@@ -744,7 +764,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_deploy}
 \end{figure}
 
-\paragraph{SD-06: GitHub OAuth Connection}
+\begin{center}\textbf{SD-06: GitHub OAuth Connection}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_github_oauth.pdf}
@@ -752,7 +772,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_github}
 \end{figure}
 
-\paragraph{SD-07: Custom Domain Management}
+\begin{center}\textbf{SD-07: Custom Domain Management}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{diagrams/seq_domain.pdf}
@@ -760,7 +780,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_domain}
 \end{figure}
 
-\paragraph{SD-08: ZIP Upload and Deploy}
+\begin{center}\textbf{SD-08: ZIP Upload and Deploy}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_upload_zip.pdf}
@@ -768,7 +788,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_zip}
 \end{figure}
 
-\paragraph{SD-09: Environment Variable Management}
+\begin{center}\textbf{SD-09: Environment Variable Management}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{diagrams/seq_env_vars.pdf}
@@ -776,7 +796,7 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_env}
 \end{figure}
 
-\paragraph{SD-10: Authentication Middleware Flow}
+\begin{center}\textbf{SD-10: Authentication Middleware Flow}\end{center}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{diagrams/seq_middleware.pdf}
@@ -1171,11 +1191,14 @@ NFR-16 & OAuth CSRF Prevention & D-SEC-02 & Security Design \\
 \end{itemize}
 
 %===============================================================
-% APPENDICES
+% APPENDIX
 %===============================================================
-\appendix
+\newpage
+\section*{Appendix}
+\addcontentsline{toc}{section}{Appendix}
 
-\section{Glossary}
+\subsection*{Glossary}
+\addcontentsline{toc}{subsection}{Glossary}
 \begin{description}
     \item[BullMQ] A Node.js library for Redis-based message queues with job scheduling and retry support.
     \item[Caddy] A modern web server with automatic HTTPS and a JSON-based admin API for dynamic configuration.
