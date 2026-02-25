@@ -33,7 +33,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{PageForge --- SRS \& Design Document}
-\fancyhead[R]{Version 1.0}
+\fancyhead[R]{Version 2.0}
 \fancyfoot[C]{\thepage}
 
 % Prevent orphaned headings (headings at bottom of page with no content following)
@@ -235,7 +235,7 @@ The major functions of PageForge are:
     \item \textbf{Cache/Queue:} Redis 7.0+.
     \item \textbf{Object Storage:} MinIO (S3-compatible).
     \item \textbf{Reverse Proxy:} Caddy 2.x with JSON admin API.
-    \item \textbf{Package Manager:} pnpm 8+ with workspace support.
+    \item \textbf{Package Manager:} pnpm 9+ with workspace support.
     \item \textbf{Browser:} Modern browsers (Chrome 90+, Firefox 90+, Safari 15+, Edge 90+).
     \item \textbf{Optional:} Cloudflare Tunnel for public access without port forwarding.
 \end{itemize}
@@ -336,7 +336,7 @@ Allows new users to create an account with name, email, and password. Email addr
 \begin{description}
     \item[FR-01] The system shall provide a registration form accepting name, email, and password.
     \item[FR-02] The system shall validate that all fields are non-empty and email is in valid format.
-    \item[FR-03] The system shall reject registration if the email is already registered (HTTP 409).
+    \item[FR-03] The system shall reject registration if the email is already registered (HTTP 409). Note: this intentionally reveals email existence to provide clear user feedback; the anti-enumeration requirement FR-91 applies only to the password reset flow.
     \item[FR-04] The system shall hash passwords using bcrypt with 12 salt rounds before storage.
     \item[FR-05] The system shall require email OTP verification before finalizing account creation (see Section 4.3).
     \item[FR-06] The system shall store the user in MongoDB with \texttt{createdAt} and \texttt{updatedAt} timestamps only after successful OTP verification, and return HTTP 201.
@@ -598,13 +598,13 @@ Allows users to reset their password by verifying their identity via a one-time 
 \begin{description}
     \item[FR-89] The system shall provide a ``Forgot Password'' link on the login page navigating to \texttt{/forgot-password}.
     \item[FR-90] The system shall accept an email address and send a 6-digit OTP to it if the email is registered.
-    \item[FR-91] The system shall not reveal whether an email is registered or not (to prevent user enumeration).
+    \item[FR-91] The system shall not reveal whether an email is registered or not during the password reset flow (to prevent user enumeration via the forgot-password endpoint).
     \item[FR-92] The system shall generate a cryptographically random 6-digit OTP with a 5-minute expiry.
     \item[FR-93] The system shall invalidate the OTP after successful verification (single-use).
     \item[FR-94] The system shall present a new password form only after successful OTP verification.
     \item[FR-95] The system shall validate that the new password meets minimum requirements.
     \item[FR-96] The system shall hash the new password using bcrypt with 12 salt rounds and update the user record.
-    \item[FR-97] The system shall invalidate all existing sessions for the user after a password reset.
+    \item[FR-97] The system shall require the user to log in again after a successful password reset. Since JWT sessions are stateless, existing tokens remain valid until their natural 30-day expiry; the password change itself prevents further logins with the old password.
     \item[FR-98] The system shall redirect to the login page after successful password reset.
 \end{description}
 
@@ -724,7 +724,9 @@ The class diagram shows all major classes across the six modules: Authentication
 
 \subsubsection{Sequence Diagrams}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-01: User Registration}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_register.pdf}
@@ -732,7 +734,9 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_register}
 \end{figure}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-02: User Login (Credentials)}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_login.pdf}
@@ -740,7 +744,9 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_login}
 \end{figure}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-03: Email OTP Verification (Registration \& Password Reset)}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_otp_login.pdf}
@@ -748,7 +754,9 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_otp}
 \end{figure}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-04: Create New Project}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{diagrams/seq_create_project.pdf}
@@ -756,7 +764,9 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_create}
 \end{figure}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-05: Trigger Deployment and Build Process}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=\textwidth]{diagrams/seq_deploy.pdf}
@@ -764,7 +774,9 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_deploy}
 \end{figure}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-06: GitHub OAuth Connection}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_github_oauth.pdf}
@@ -772,7 +784,9 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_github}
 \end{figure}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-07: Custom Domain Management}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.95\textwidth]{diagrams/seq_domain.pdf}
@@ -780,7 +794,9 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_domain}
 \end{figure}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-08: ZIP Upload and Deploy}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.9\textwidth]{diagrams/seq_upload_zip.pdf}
@@ -788,7 +804,9 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_zip}
 \end{figure}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-09: Environment Variable Management}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{diagrams/seq_env_vars.pdf}
@@ -796,7 +814,9 @@ The class diagram shows all major classes across the six modules: Authentication
     \label{fig:seq_env}
 \end{figure}
 
+\needspace{8\baselineskip}
 \begin{center}\textbf{SD-10: Authentication Middleware Flow}\end{center}
+\vspace{-0.5em}
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.85\textwidth]{diagrams/seq_middleware.pdf}
@@ -1085,7 +1105,7 @@ createdAt & Date & auto, indexed & Creation timestamp \\
 \begin{description}
     \item[NFR-17] \textbf{Maintainability:} Monorepo with shared types ensures consistency across web app and worker.
     \item[NFR-18] \textbf{Portability:} Runs on any Linux server with Docker; no cloud-provider-specific dependencies.
-    \item[NFR-19] \textbf{Usability:} Dark mode default, responsive design, loading/error/empty states on all pages.
+    \item[NFR-19] \textbf{Usability:} Dark mode default, consistent loading/error/empty states on all pages, desktop-optimized layout. Mobile-responsive layout is deferred to a future version.
     \item[NFR-20] \textbf{Reliability:} BullMQ provides job retry and persistence; deployments survive worker restarts.
     \item[NFR-21] \textbf{Extensibility:} Git provider type supports ``other'' for future self-hosted Git integration.
 \end{description}

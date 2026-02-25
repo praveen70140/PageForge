@@ -70,29 +70,29 @@
 \contentsline {subsection}{\numberline {5.2}Detailed Design}{24}{subsection.5.2}%
 \contentsline {subsubsection}{\numberline {5.2.1}Class Diagrams}{24}{subsubsection.5.2.1}%
 \contentsline {subsubsection}{\numberline {5.2.2}Sequence Diagrams}{26}{subsubsection.5.2.2}%
-\contentsline {subsection}{\numberline {5.3}Database Schema}{36}{subsection.5.3}%
-\contentsline {subsubsection}{\numberline {5.3.1}Collection: \texttt {users}}{38}{subsubsection.5.3.1}%
-\contentsline {subsubsection}{\numberline {5.3.2}Collection: \texttt {projects}}{38}{subsubsection.5.3.2}%
-\contentsline {subsubsection}{\numberline {5.3.3}Collection: \texttt {deployments}}{38}{subsubsection.5.3.3}%
-\contentsline {subsubsection}{\numberline {5.3.4}Indexes}{39}{subsubsection.5.3.4}%
-\contentsline {subsection}{\numberline {5.4}Security Design}{39}{subsection.5.4}%
-\contentsline {subsubsection}{\numberline {5.4.1}Authentication and Authorization Mechanisms}{39}{subsubsection.5.4.1}%
-\contentsline {paragraph}{Authentication Mechanisms (D-SEC-01)}{39}{section*.3}%
-\contentsline {paragraph}{Authorization Mechanisms (D-SEC-02)}{40}{section*.4}%
-\contentsline {subsubsection}{\numberline {5.4.2}Security Protocols}{40}{subsubsection.5.4.2}%
-\contentsline {paragraph}{SP-01: Secret Management}{40}{section*.5}%
-\contentsline {paragraph}{SP-02: Build Container Isolation}{40}{section*.6}%
-\contentsline {paragraph}{SP-03: Log Sanitization}{41}{section*.7}%
-\contentsline {paragraph}{SP-04: Reverse Proxy Security}{41}{section*.8}%
-\contentsline {paragraph}{SP-05: Data Access Control}{41}{section*.9}%
-\contentsline {section}{\numberline {6}Other Nonfunctional Requirements}{41}{section.6}%
-\contentsline {subsection}{\numberline {6.1}Performance Requirements}{41}{subsection.6.1}%
-\contentsline {subsection}{\numberline {6.2}Safety Requirements}{42}{subsection.6.2}%
-\contentsline {subsection}{\numberline {6.3}Security Requirements}{42}{subsection.6.3}%
-\contentsline {subsection}{\numberline {6.4}Software Quality Attributes}{42}{subsection.6.4}%
-\contentsline {subsection}{\numberline {6.5}Business Rules}{42}{subsection.6.5}%
-\contentsline {section}{\numberline {7}Traceability}{43}{section.7}%
-\contentsline {subsection}{\numberline {7.1}Requirement-to-Design Mapping}{43}{subsection.7.1}%
-\contentsline {section}{\numberline {8}Other Requirements}{44}{section.8}%
-\contentsline {section}{Appendix}{45}{section*.10}%
-\contentsline {subsection}{Glossary}{45}{section*.11}%
+\contentsline {subsection}{\numberline {5.3}Database Schema}{37}{subsection.5.3}%
+\contentsline {subsubsection}{\numberline {5.3.1}Collection: \texttt {users}}{39}{subsubsection.5.3.1}%
+\contentsline {subsubsection}{\numberline {5.3.2}Collection: \texttt {projects}}{39}{subsubsection.5.3.2}%
+\contentsline {subsubsection}{\numberline {5.3.3}Collection: \texttt {deployments}}{39}{subsubsection.5.3.3}%
+\contentsline {subsubsection}{\numberline {5.3.4}Indexes}{40}{subsubsection.5.3.4}%
+\contentsline {subsection}{\numberline {5.4}Security Design}{40}{subsection.5.4}%
+\contentsline {subsubsection}{\numberline {5.4.1}Authentication and Authorization Mechanisms}{40}{subsubsection.5.4.1}%
+\contentsline {paragraph}{Authentication Mechanisms (D-SEC-01)}{40}{section*.3}%
+\contentsline {paragraph}{Authorization Mechanisms (D-SEC-02)}{41}{section*.4}%
+\contentsline {subsubsection}{\numberline {5.4.2}Security Protocols}{41}{subsubsection.5.4.2}%
+\contentsline {paragraph}{SP-01: Secret Management}{41}{section*.5}%
+\contentsline {paragraph}{SP-02: Build Container Isolation}{41}{section*.6}%
+\contentsline {paragraph}{SP-03: Log Sanitization}{42}{section*.7}%
+\contentsline {paragraph}{SP-04: Reverse Proxy Security}{42}{section*.8}%
+\contentsline {paragraph}{SP-05: Data Access Control}{42}{section*.9}%
+\contentsline {section}{\numberline {6}Other Nonfunctional Requirements}{42}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Performance Requirements}{42}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Safety Requirements}{43}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Security Requirements}{43}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Software Quality Attributes}{43}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Business Rules}{43}{subsection.6.5}%
+\contentsline {section}{\numberline {7}Traceability}{44}{section.7}%
+\contentsline {subsection}{\numberline {7.1}Requirement-to-Design Mapping}{44}{subsection.7.1}%
+\contentsline {section}{\numberline {8}Other Requirements}{45}{section.8}%
+\contentsline {section}{Appendix}{46}{section*.10}%
+\contentsline {subsection}{Glossary}{46}{section*.11}%
